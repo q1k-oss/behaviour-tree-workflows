@@ -1,51 +1,58 @@
 /**
- * Script Node tests
- * Tests the Script action node integration with behavior trees
+ * Script Node tests (isolated-vm based)
+ * Tests the Script action node with full JavaScript support in V8 isolate
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { ScopedBlackboard } from "../blackboard.js";
+import { Registry } from "../registry.js";
 import { type TemporalContext, NodeStatus } from "../types.js";
 import { Script, type ScriptConfiguration } from "./script-node.js";
 
-describe("Script Node", () => {
+describe("Script Node (isolated-vm)", () => {
   let blackboard: ScopedBlackboard;
+  let registry: Registry;
   let context: TemporalContext;
 
   beforeEach(() => {
     blackboard = new ScopedBlackboard();
+    registry = new Registry();
     context = {
       blackboard,
+      treeRegistry: registry,
       timestamp: Date.now(),
       deltaTime: 0,
     };
   });
 
   describe("Construction and validation", () => {
-    it("should create script node with valid script", () => {
+    it("should create script node with valid code", () => {
       const node = new Script({
         id: "script-1",
-        textContent: "x = 10",
+        code: "$bb.x = 10;",
       });
       expect(node).toBeDefined();
       expect(node.id).toBe("script-1");
     });
 
-    it("should cache parse tree at construction", () => {
-      // Should not throw on construction
-      const node = new Script({
-        id: "script-1",
-        textContent: "x = 10; y = 20",
-      });
-      expect(node).toBeDefined();
+    it("should require code property", () => {
+      expect(() => {
+        new Script({ id: "test" } as unknown as ScriptConfiguration);
+      }).toThrow(/requires.*code/i);
+    });
+
+    it("should reject empty code", () => {
+      expect(() => {
+        new Script({ id: "test", code: "" });
+      }).toThrow(/requires.*code/i);
     });
   });
 
-  describe("Script execution", () => {
+  describe("Blackboard operations via $bb", () => {
     it("should execute simple assignment", async () => {
       const node = new Script({
         id: "script-1",
-        textContent: "result = 42",
+        code: "$bb.result = 42;",
       });
 
       const status = await node.tick(context);
@@ -54,14 +61,28 @@ describe("Script Node", () => {
       expect(blackboard.get("result")).toBe(42);
     });
 
+    it("should read from blackboard", async () => {
+      blackboard.set("input", 10);
+
+      const node = new Script({
+        id: "script-1",
+        code: "$bb.output = $bb.input * 2;",
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("output")).toBe(20);
+    });
+
     it("should execute multiple statements", async () => {
       const node = new Script({
         id: "script-1",
-        textContent: `
-            x = 10
-            y = 20
-            sum = x + y
-          `,
+        code: `
+          $bb.x = 10;
+          $bb.y = 20;
+          $bb.sum = $bb.x + $bb.y;
+        `,
       });
 
       const status = await node.tick(context);
@@ -72,28 +93,13 @@ describe("Script Node", () => {
       expect(blackboard.get("sum")).toBe(30);
     });
 
-    it("should read from existing blackboard values", async () => {
-      blackboard.set("price", 100);
-      blackboard.set("quantity", 3);
-
-      const node = new Script({
-        id: "script-1",
-        textContent: "total = price * quantity",
-      });
-
-      const status = await node.tick(context);
-
-      expect(status).toBe(NodeStatus.SUCCESS);
-      expect(blackboard.get("total")).toBe(300);
-    });
-
     it("should handle string operations", async () => {
       blackboard.set("firstName", "John");
       blackboard.set("lastName", "Doe");
 
       const node = new Script({
         id: "script-1",
-        textContent: 'fullName = firstName + " " + lastName',
+        code: "$bb.fullName = $bb.firstName + ' ' + $bb.lastName;",
       });
 
       const status = await node.tick(context);
@@ -107,7 +113,7 @@ describe("Script Node", () => {
 
       const node = new Script({
         id: "script-1",
-        textContent: "isAdult = age >= 18",
+        code: "$bb.isAdult = $bb.age >= 18;",
       });
 
       const status = await node.tick(context);
@@ -122,7 +128,7 @@ describe("Script Node", () => {
 
       const node = new Script({
         id: "script-1",
-        textContent: "isValid = count > 0 && title != null",
+        code: "$bb.isValid = $bb.count > 0 && $bb.title !== null;",
       });
 
       const status = await node.tick(context);
@@ -131,7 +137,7 @@ describe("Script Node", () => {
       expect(blackboard.get("isValid")).toBe(true);
     });
 
-    it("should handle property access", async () => {
+    it("should handle nested object property access", async () => {
       blackboard.set("user", {
         profile: {
           name: "John Doe",
@@ -141,10 +147,11 @@ describe("Script Node", () => {
 
       const node = new Script({
         id: "script-1",
-        textContent: `
-            userName = user.profile.name
-            userAge = user.profile.age
-          `,
+        code: `
+          const user = $bb.user;
+          $bb.userName = user.profile.name;
+          $bb.userAge = user.profile.age;
+        `,
       });
 
       const status = await node.tick(context);
@@ -153,39 +160,256 @@ describe("Script Node", () => {
       expect(blackboard.get("userName")).toBe("John Doe");
       expect(blackboard.get("userAge")).toBe(30);
     });
-  });
 
-  describe("Error handling", () => {
-    it("should handle undefined property access gracefully", async () => {
+    it("should handle arrays", async () => {
+      blackboard.set("items", [1, 2, 3, 4, 5]);
+
       const node = new Script({
         id: "script-1",
-        textContent: "result = unknownVar.property", // Undefined property access returns undefined, not error
+        code: `
+          const items = $bb.items;
+          $bb.count = items.length;
+          $bb.sum = items.reduce((a, b) => a + b, 0);
+          $bb.first = items[0];
+        `,
       });
 
       const status = await node.tick(context);
 
-      // JavaScript doesn't error on undefined property access, so this succeeds
       expect(status).toBe(NodeStatus.SUCCESS);
-      expect(blackboard.get("result")).toBeUndefined();
+      expect(blackboard.get("count")).toBe(5);
+      expect(blackboard.get("sum")).toBe(15);
+      expect(blackboard.get("first")).toBe(1);
     });
+  });
 
-    it("should handle multiple tick executions", async () => {
+  describe("Full JavaScript support", () => {
+    it("should support const and let declarations", async () => {
       const node = new Script({
         id: "script-1",
-        textContent: "counter = counter + 1",
+        code: `
+          const a = 10;
+          let b = 20;
+          b = b + 5;
+          $bb.result = a + b;
+        `,
       });
 
-      blackboard.set("counter", 0);
+      const status = await node.tick(context);
 
-      await node.tick(context);
-      expect(blackboard.get("counter")).toBe(1);
-
-      await node.tick(context);
-      expect(blackboard.get("counter")).toBe(2);
-
-      await node.tick(context);
-      expect(blackboard.get("counter")).toBe(3);
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("result")).toBe(35);
     });
+
+    it("should support arrow functions", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: `
+          const double = x => x * 2;
+          const add = (a, b) => a + b;
+          $bb.doubled = double(5);
+          $bb.sum = add(3, 4);
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("doubled")).toBe(10);
+      expect(blackboard.get("sum")).toBe(7);
+    });
+
+    it("should support destructuring", async () => {
+      blackboard.set("data", { name: "Alice", age: 30, city: "NYC" });
+
+      const node = new Script({
+        id: "script-1",
+        code: `
+          const { name, age } = $bb.data;
+          $bb.userName = name;
+          $bb.userAge = age;
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("userName")).toBe("Alice");
+      expect(blackboard.get("userAge")).toBe(30);
+    });
+
+    it("should support template literals", async () => {
+      blackboard.set("name", "World");
+      blackboard.set("count", 42);
+
+      const node = new Script({
+        id: "script-1",
+        code: "$bb.message = `Hello, ${$bb.name}! Count is ${$bb.count}.`;",
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("message")).toBe("Hello, World! Count is 42.");
+    });
+
+    it("should support spread operator", async () => {
+      blackboard.set("arr1", [1, 2, 3]);
+      blackboard.set("arr2", [4, 5, 6]);
+
+      const node = new Script({
+        id: "script-1",
+        code: "$bb.combined = [...$bb.arr1, ...$bb.arr2];",
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("combined")).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+
+    it("should support object spread", async () => {
+      blackboard.set("base", { a: 1, b: 2 });
+
+      const node = new Script({
+        id: "script-1",
+        code: "$bb.extended = { ...$bb.base, c: 3 };",
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("extended")).toEqual({ a: 1, b: 2, c: 3 });
+    });
+
+    it("should support async/await", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: `
+          const delay = (ms) => new Promise(r => setTimeout(r, ms));
+          await delay(10);
+          $bb.completed = true;
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("completed")).toBe(true);
+    });
+
+    it("should support try-catch", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: `
+          try {
+            throw new Error("Test error");
+          } catch (e) {
+            $bb.caught = true;
+            $bb.errorMessage = e.message;
+          }
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("caught")).toBe(true);
+      expect(blackboard.get("errorMessage")).toBe("Test error");
+    });
+
+    it("should support classes", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: `
+          class Calculator {
+            add(a, b) { return a + b; }
+            multiply(a, b) { return a * b; }
+          }
+          const calc = new Calculator();
+          $bb.sum = calc.add(2, 3);
+          $bb.product = calc.multiply(4, 5);
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("sum")).toBe(5);
+      expect(blackboard.get("product")).toBe(20);
+    });
+  });
+
+  describe("Error handling", () => {
+    it("should return FAILURE for thrown errors", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: "throw new Error('Test error');",
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.FAILURE);
+      expect(node.lastError).toContain("Test error");
+    });
+
+    it("should return FAILURE for runtime errors", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: "const x = null; x.property;", // TypeError
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.FAILURE);
+    });
+
+    it("should return FAILURE for syntax errors", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: "const x = {;", // SyntaxError
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.FAILURE);
+    });
+  });
+
+  describe("Sandbox security", () => {
+    it("should prevent access to Node.js require", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: "const fs = require('fs');",
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.FAILURE);
+    });
+
+    it("should prevent access to process", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: "$bb.env = process.env;",
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.FAILURE);
+    });
+
+    it("should timeout long-running scripts", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: "while(true) {}", // Infinite loop
+        timeout: 100, // 100ms timeout
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.FAILURE);
+    }, 5000);
   });
 
   describe("Real-world scenarios", () => {
@@ -196,8 +420,19 @@ describe("Script Node", () => {
 
       const node = new Script({
         id: "calculate-total",
-        textContent:
-          "subtotal = price * quantity; discountAmount = subtotal * discountPercent / 100; total = subtotal - discountAmount",
+        code: `
+          const price = $bb.price;
+          const quantity = $bb.quantity;
+          const discount = $bb.discountPercent;
+
+          const subtotal = price * quantity;
+          const discountAmount = subtotal * discount / 100;
+          const total = subtotal - discountAmount;
+
+          $bb.subtotal = subtotal;
+          $bb.discountAmount = discountAmount;
+          $bb.total = total;
+        `,
       });
 
       const status = await node.tick(context);
@@ -208,88 +443,66 @@ describe("Script Node", () => {
       expect(blackboard.get("total")).toBe(450);
     });
 
-    it("should perform form validation", async () => {
-      blackboard.set("username", "john_doe");
-      blackboard.set("email", "john@example.com");
-      blackboard.set("age", 25);
-      blackboard.set("termsAccepted", true);
+    it("should perform data transformation", async () => {
+      blackboard.set("users", [
+        { name: "Alice", age: 25 },
+        { name: "Bob", age: 30 },
+        { name: "Charlie", age: 35 },
+      ]);
+
+      const node = new Script({
+        id: "transform-data",
+        code: `
+          const users = $bb.users;
+          $bb.names = users.map(u => u.name);
+          $bb.totalAge = users.reduce((sum, u) => sum + u.age, 0);
+          $bb.averageAge = $bb.totalAge / users.length;
+          $bb.adults = users.filter(u => u.age >= 18);
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("names")).toEqual(["Alice", "Bob", "Charlie"]);
+      expect(blackboard.get("totalAge")).toBe(90);
+      expect(blackboard.get("averageAge")).toBe(30);
+      expect(blackboard.get("adults")).toHaveLength(3);
+    });
+
+    it("should validate form data", async () => {
+      blackboard.set("formData", {
+        email: "test@example.com",
+        password: "securePass123",
+        age: 25,
+      });
 
       const node = new Script({
         id: "validate-form",
-        textContent: `
-            hasUsername = username != null
-            hasEmail = email != null
-            isAdult = age >= 18
-            allValid = hasUsername && hasEmail && isAdult && termsAccepted
-          `,
+        code: `
+          const { email, password, age } = $bb.formData;
+          const errors = [];
+
+          if (!email || !email.includes('@')) {
+            errors.push('Invalid email');
+          }
+          if (!password || password.length < 8) {
+            errors.push('Password too short');
+          }
+          if (age < 18) {
+            errors.push('Must be 18 or older');
+          }
+
+          $bb.isValid = errors.length === 0;
+          $bb.errors = errors;
+        `,
       });
 
       const status = await node.tick(context);
 
       expect(status).toBe(NodeStatus.SUCCESS);
-      expect(blackboard.get("allValid")).toBe(true);
-    });
-
-    it("should format display text", async () => {
-      blackboard.set("items", { length: 5 });
-      blackboard.set("pageTitle", "Shopping Cart");
-
-      const node = new Script({
-        id: "format-text",
-        textContent: `
-            itemCount = items.length
-            displayText = pageTitle + " (" + itemCount + " items)"
-          `,
-      });
-
-      const status = await node.tick(context);
-
-      expect(status).toBe(NodeStatus.SUCCESS);
-      expect(blackboard.get("displayText")).toBe("Shopping Cart (5 items)");
-    });
-
-    it("should store and verify element properties", async () => {
-      blackboard.set("elementText", "Welcome");
-      blackboard.set("expectedText", "Welcome");
-      blackboard.set("elementVisible", true);
-
-      const node = new Script({
-        id: "verify-element",
-        textContent: `
-            textMatches = elementText == expectedText
-            isDisplayed = elementVisible == true
-            verificationPassed = textMatches && isDisplayed
-          `,
-      });
-
-      const status = await node.tick(context);
-
-      expect(status).toBe(NodeStatus.SUCCESS);
-      expect(blackboard.get("verificationPassed")).toBe(true);
-    });
-
-    it("should calculate test metrics", async () => {
-      blackboard.set("totalTests", 100);
-      blackboard.set("passedTests", 85);
-      blackboard.set("failedTests", 10);
-      blackboard.set("skippedTests", 5);
-
-      const node = new Script({
-        id: "calculate-metrics",
-        textContent: `
-            passRate = passedTests / totalTests * 100
-            failRate = failedTests / totalTests * 100
-            completedTests = passedTests + failedTests
-            completionRate = completedTests / totalTests * 100
-          `,
-      });
-
-      const status = await node.tick(context);
-
-      expect(status).toBe(NodeStatus.SUCCESS);
-      expect(blackboard.get("passRate")).toBe(85);
-      expect(blackboard.get("failRate")).toBe(10);
-      expect(blackboard.get("completionRate")).toBe(95);
+      expect(blackboard.get("isValid")).toBe(true);
+      expect(blackboard.get("errors")).toEqual([]);
     });
   });
 
@@ -297,7 +510,7 @@ describe("Script Node", () => {
     it("should work with node reset", async () => {
       const node = new Script({
         id: "script-1",
-        textContent: "value = 100",
+        code: "$bb.value = 100;",
       });
 
       await node.tick(context);
@@ -312,29 +525,10 @@ describe("Script Node", () => {
       expect(blackboard.get("value")).toBe(100);
     });
 
-    it("should work with node halt", async () => {
-      const node = new Script({
-        id: "script-1",
-        textContent: "value = 200",
-      });
-
-      await node.tick(context);
-
-      // Scripts execute synchronously and complete immediately
-      expect(node.status()).toBe(NodeStatus.SUCCESS);
-
-      node.halt();
-
-      // Halt only resets status to IDLE if node is RUNNING
-      // Since script completed with SUCCESS, halt doesn't change status
-      expect(node.status()).toBe(NodeStatus.SUCCESS);
-      expect(blackboard.get("value")).toBe(200);
-    });
-
     it("should work with node clone", async () => {
       const node = new Script({
         id: "script-1",
-        textContent: "value = 300",
+        code: "$bb.value = 300;",
       });
 
       const cloned = node.clone() as Script;
@@ -343,314 +537,23 @@ describe("Script Node", () => {
       await cloned.tick(context);
       expect(blackboard.get("value")).toBe(300);
     });
-  });
 
-  describe("Comments in scripts", () => {
-    it("should handle single-line comments", async () => {
+    it("should handle multiple tick executions", async () => {
+      blackboard.set("counter", 0);
+
       const node = new Script({
         id: "script-1",
-        textContent: `
-            // Calculate total
-            x = 10
-            y = 20
-            result = x + y // Add them together
-          `,
+        code: "$bb.counter = $bb.counter + 1;",
       });
 
-      const status = await node.tick(context);
+      await node.tick(context);
+      expect(blackboard.get("counter")).toBe(1);
 
-      expect(status).toBe(NodeStatus.SUCCESS);
-      expect(blackboard.get("result")).toBe(30);
-    });
-  });
+      await node.tick(context);
+      expect(blackboard.get("counter")).toBe(2);
 
-  describe("Syntax Validation", () => {
-    it("should reject invalid operators", () => {
-      expect(() => {
-        new Script({
-          id: "test",
-          textContent: "x += 10;",
-        });
-      }).toThrow(/syntax error/i);
-    });
-
-    it("should reject increment operators", () => {
-      expect(() => {
-        new Script({
-          id: "test",
-          textContent: "x++; y--;",
-        });
-      }).toThrow(/syntax error/i);
-    });
-
-    it("should reject function calls", () => {
-      expect(() => {
-        new Script({
-          id: "test",
-          textContent: "result = Math.max(a, b);",
-        });
-      }).toThrow(/syntax error/i);
-    });
-
-    it("should require text content", () => {
-      expect(() => {
-        new Script({ id: "test" } as unknown as ScriptConfiguration);
-      }).toThrow(/requires text content/i);
-    });
-
-    it("should accept valid code", () => {
-      expect(() => {
-        new Script({
-          id: "test",
-          textContent: "x = 5; y = x + 10; result = y > 10;",
-        });
-      }).not.toThrow();
-    });
-  });
-
-  describe("Built-in Functions", () => {
-    describe("param() function", () => {
-      it("should load test data parameter", async () => {
-        const testData = new Map<string, unknown>();
-        testData.set("username", "john.doe");
-        testData.set("age", 25);
-
-        context.testData = testData;
-
-        const node = new Script({
-          id: "load-param",
-          textContent: 'username = param("username")',
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.SUCCESS);
-        expect(blackboard.get("username")).toBe("john.doe");
-      });
-
-      it("should load multiple test data parameters", async () => {
-        const testData = new Map<string, unknown>();
-        testData.set("username", "john.doe");
-        testData.set("password", "secret123");
-        testData.set("age", 30);
-
-        context.testData = testData;
-
-        const node = new Script({
-          id: "load-multiple",
-          textContent: `
-              user = param("username")
-              pass = param("password")
-              userAge = param("age")
-            `,
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.SUCCESS);
-        expect(blackboard.get("user")).toBe("john.doe");
-        expect(blackboard.get("pass")).toBe("secret123");
-        expect(blackboard.get("userAge")).toBe(30);
-      });
-
-      it("should return undefined for non-existent parameter", async () => {
-        const testData = new Map<string, unknown>();
-        context.testData = testData;
-
-        const node = new Script({
-          id: "missing-param",
-          textContent: 'value = param("missing")',
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.SUCCESS);
-        expect(blackboard.get("value")).toBeUndefined();
-      });
-
-      it("should work when testData is not provided", async () => {
-        // No testData in context
-
-        const node = new Script({
-          id: "no-testdata",
-          textContent: 'value = param("username")',
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.SUCCESS);
-        expect(blackboard.get("value")).toBeUndefined();
-      });
-
-      it("should throw error if param() called without string argument", async () => {
-        const testData = new Map<string, unknown>();
-        context.testData = testData;
-
-        const node = new Script({
-          id: "invalid-param",
-          textContent: "value = param(123)", // Number instead of string
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.FAILURE);
-      });
-    });
-
-    describe("env() function", () => {
-      it("should load environment variable", async () => {
-        process.env.BASE_URL = "https://example.com";
-        process.env.API_KEY = "secret-key-123";
-
-        const node = new Script({
-          id: "load-env",
-          textContent: 'baseUrl = env("BASE_URL")',
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.SUCCESS);
-        expect(blackboard.get("baseUrl")).toBe("https://example.com");
-
-        // Cleanup
-        delete process.env.BASE_URL;
-        delete process.env.API_KEY;
-      });
-
-      it("should load multiple environment variables", async () => {
-        process.env.BASE_URL = "https://api.example.com";
-        process.env.API_KEY = "key123";
-        process.env.TIMEOUT = "5000";
-
-        const node = new Script({
-          id: "load-multiple-env",
-          textContent: `
-              baseUrl = env("BASE_URL")
-              apiKey = env("API_KEY")
-              timeout = env("TIMEOUT")
-            `,
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.SUCCESS);
-        expect(blackboard.get("baseUrl")).toBe("https://api.example.com");
-        expect(blackboard.get("apiKey")).toBe("key123");
-        expect(blackboard.get("timeout")).toBe("5000"); // Env vars are strings
-
-        // Cleanup
-        delete process.env.BASE_URL;
-        delete process.env.API_KEY;
-        delete process.env.TIMEOUT;
-      });
-
-      it("should return undefined for non-existent environment variable", async () => {
-        const node = new Script({
-          id: "missing-env",
-          textContent: 'value = env("NONEXISTENT_VAR")',
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.SUCCESS);
-        expect(blackboard.get("value")).toBeUndefined();
-      });
-
-      it("should throw error if env() called without string argument", async () => {
-        const node = new Script({
-          id: "invalid-env",
-          textContent: "value = env(true)", // Boolean instead of string
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.FAILURE);
-      });
-    });
-
-    describe("Computed values with built-ins", () => {
-      it("should build URL from env and param", async () => {
-        process.env.BASE_URL = "https://api.example.com";
-
-        const testData = new Map<string, unknown>();
-        testData.set("userId", "123");
-        testData.set("postId", "456");
-        context.testData = testData;
-
-        const node = new Script({
-          id: "build-url",
-          textContent: `
-              baseUrl = env("BASE_URL")
-              userId = param("userId")
-              postId = param("postId")
-              apiUrl = baseUrl + "/users/" + userId + "/posts/" + postId
-            `,
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.SUCCESS);
-        expect(blackboard.get("apiUrl")).toBe(
-          "https://api.example.com/users/123/posts/456",
-        );
-
-        // Cleanup
-        delete process.env.BASE_URL;
-      });
-
-      it("should perform calculations with param values", async () => {
-        const testData = new Map<string, unknown>();
-        testData.set("price", 100);
-        testData.set("quantity", 3);
-        testData.set("discountPercent", 10);
-        context.testData = testData;
-
-        const node = new Script({
-          id: "calculate",
-          textContent: `
-              price = param("price")
-              quantity = param("quantity")
-              discount = param("discountPercent")
-
-              subtotal = price * quantity
-              discountAmount = subtotal * discount / 100
-              total = subtotal - discountAmount
-            `,
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.SUCCESS);
-        expect(blackboard.get("subtotal")).toBe(300);
-        expect(blackboard.get("discountAmount")).toBe(30);
-        expect(blackboard.get("total")).toBe(270);
-      });
-
-      it("should use conditionals with param values", async () => {
-        const testData = new Map<string, unknown>();
-        testData.set("userRole", "admin");
-        testData.set("age", 25);
-        context.testData = testData;
-
-        const node = new Script({
-          id: "conditionals",
-          textContent: `
-              role = param("userRole")
-              age = param("age")
-
-              isAdmin = role == "admin"
-              isAdult = age >= 18
-              hasAccess = isAdmin && isAdult
-            `,
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.SUCCESS);
-        expect(blackboard.get("isAdmin")).toBe(true);
-        expect(blackboard.get("isAdult")).toBe(true);
-        expect(blackboard.get("hasAccess")).toBe(true);
-      });
-    });
-
-    describe("Error handling for unknown functions", () => {
-      it("should fail with unknown function name", async () => {
-        const node = new Script({
-          id: "unknown-func",
-          textContent: 'value = unknownFunction("arg")',
-        });
-
-        const result = await node.tick(context);
-        expect(result).toBe(NodeStatus.FAILURE);
-      });
+      await node.tick(context);
+      expect(blackboard.get("counter")).toBe(3);
     });
   });
 });

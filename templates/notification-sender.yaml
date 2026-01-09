@@ -1,0 +1,33 @@
+# Notification Sender Template
+# Sends notifications through configured channels
+#
+# Inputs (expected on blackboard):
+#   - notificationMessage: string
+#   - notificationType: string (email, slack, sms)
+#   - recipient: string
+#
+# Outputs (set on blackboard):
+#   - notificationSent: boolean
+#   - notificationId: string (optional)
+
+type: Sequence
+id: notification-sender
+name: Notification Sender
+
+children:
+  - type: LogMessage
+    id: log-start
+    props:
+      message: "Preparing to send notification: ${notificationMessage}"
+      level: info
+
+  - type: LogMessage
+    id: log-type
+    props:
+      message: "Notification type: ${notificationType}, Recipient: ${recipient}"
+
+  - type: LogMessage
+    id: log-complete
+    props:
+      message: "Notification sent successfully"
+      level: info

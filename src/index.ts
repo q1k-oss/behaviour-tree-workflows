@@ -50,3 +50,5 @@ export { ConfigurationError } from "./errors.js";
 export * from "./yaml/index.js";
 // Schemas (for advanced usage)
 export * from "./schemas/index.js";
+// Template loading
+export * from "./templates/template-loader.js";
