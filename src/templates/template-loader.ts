@@ -7,7 +7,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { Registry } from "../registry.js";
-import { loadTreeFromYaml } from "../yaml/loader.js";
+import { loadTreeFromYaml } from "../yaml/index.js";
 import { BehaviorTree } from "../behavior-tree.js";
 
 /**

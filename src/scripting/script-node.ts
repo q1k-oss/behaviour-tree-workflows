@@ -84,18 +84,31 @@ export class Script extends ActionNode {
         new ivm.ExternalCopy(bbSnapshot).copyInto()
       );
 
-      // Track changes made in isolate
-      const changes: Record<string, unknown> = {};
+      // Track changes made in isolate - store as JSON strings for safe transfer
+      const changes: Record<string, string> = {};
 
       // Create a reference for setting blackboard values
-      const setBBRef = new ivm.Reference((key: string, value: unknown) => {
-        changes[key] = value;
+      // Values are passed as JSON strings to avoid isolate boundary issues
+      const setBBRef = new ivm.Reference((key: string, jsonValue: string) => {
+        changes[key] = jsonValue;
       });
       await jail.set("__setBB", setBBRef);
 
       // Wrapper script that provides $bb proxy
+      // Note: setTimeout is provided as a simple busy-wait for short delays
       const wrappedCode = `
         (async () => {
+          // Simple delay function using busy-wait (for short delays only)
+          // This is safe in isolated-vm since we have a timeout anyway
+          globalThis.setTimeout = (fn, ms) => {
+            const start = Date.now();
+            while (Date.now() - start < ms) {
+              // Busy wait
+            }
+            fn();
+            return 0;
+          };
+
           // Create $bb proxy that reads from snapshot and tracks writes
           const $bb = new Proxy(__bbSnapshot, {
             get: (target, key) => {
@@ -107,7 +120,8 @@ export class Script extends ActionNode {
             set: (target, key, value) => {
               if (typeof key === 'string') {
                 target[key] = value;
-                __setBB.applySync(undefined, [key, value]);
+                // Serialize value to JSON for safe transfer across isolate boundary
+                __setBB.applySync(undefined, [key, JSON.stringify(value)]);
               }
               return true;
             }
@@ -122,8 +136,13 @@ export class Script extends ActionNode {
       await script.run(vmContext, { timeout: this.timeout });
 
       // Apply changes back to the real blackboard
-      for (const [key, value] of Object.entries(changes)) {
-        context.blackboard.set(key, value);
+      for (const [key, jsonValue] of Object.entries(changes)) {
+        try {
+          context.blackboard.set(key, JSON.parse(jsonValue));
+        } catch {
+          // If JSON parse fails, store the raw value
+          context.blackboard.set(key, jsonValue);
+        }
       }
 
       this.log("Script executed successfully");

@@ -52,3 +52,5 @@ export * from "./yaml/index.js";
 export * from "./schemas/index.js";
 // Template loading
 export * from "./templates/template-loader.js";
+// Integrations (Active Pieces)
+export * from "./integrations/index.js";

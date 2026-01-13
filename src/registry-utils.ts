@@ -47,6 +47,9 @@ import { Script } from "./scripting/script-node.js";
 import { LogMessage } from "./utilities/log-message.js";
 import { RegexExtract } from "./utilities/regex-extract.js";
 
+// Integrations
+import { IntegrationAction } from "./integrations/integration-action.js";
+
 /**
  * Register all standard built-in nodes to a registry
  * This includes composites, decorators, actions, conditions, and utilities
@@ -126,4 +129,7 @@ export function registerStandardNodes(registry: Registry): void {
   // Utilities
   registry.register("LogMessage", LogMessage as any, { category: "action" });
   registry.register("RegexExtract", RegexExtract as any, { category: "action" });
+
+  // Integrations
+  registry.register("IntegrationAction", IntegrationAction as any, { category: "action" });
 }
