@@ -33,8 +33,15 @@ export interface TickContext {
   timestamp: number;
 
   // Test data parameters (from CSV, data tables, etc.)
-  // Used for $param.key variable resolution
+  // Used for ${param.key} variable resolution
   testData?: Map<string, unknown>;
+
+  /**
+   * Immutable workflow input parameters
+   * Accessible via ${input.key} syntax in variable resolution
+   * These are passed when the workflow starts and should not be modified
+   */
+  input?: Readonly<Record<string, unknown>>;
 
   sessionId?: string;
 

@@ -556,4 +556,400 @@ describe("Script Node (isolated-vm)", () => {
       expect(blackboard.get("counter")).toBe(3);
     });
   });
+
+  describe("Workflow input access via $input", () => {
+    it("should read workflow input parameters", async () => {
+      context.input = Object.freeze({ orderId: "ORD-123", customerId: "CUST-456" });
+
+      const node = new Script({
+        id: "script-1",
+        code: `
+          $bb.capturedOrderId = $input.orderId;
+          $bb.capturedCustomerId = $input.customerId;
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("capturedOrderId")).toBe("ORD-123");
+      expect(blackboard.get("capturedCustomerId")).toBe("CUST-456");
+    });
+
+    it("should handle complex input objects", async () => {
+      context.input = Object.freeze({
+        user: { name: "Alice", age: 30, roles: ["admin", "user"] },
+        settings: { theme: "dark", notifications: true },
+      });
+
+      const node = new Script({
+        id: "script-1",
+        code: `
+          const { user, settings } = $input;
+          $bb.userName = user.name;
+          $bb.userAge = user.age;
+          $bb.firstRole = user.roles[0];
+          $bb.theme = settings.theme;
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("userName")).toBe("Alice");
+      expect(blackboard.get("userAge")).toBe(30);
+      expect(blackboard.get("firstRole")).toBe("admin");
+      expect(blackboard.get("theme")).toBe("dark");
+    });
+
+    it("should return undefined for missing input keys", async () => {
+      context.input = Object.freeze({ existingKey: "value" });
+
+      const node = new Script({
+        id: "script-1",
+        code: `
+          $bb.exists = $input.existingKey;
+          $bb.missing = $input.nonExistent;
+          $bb.isMissing = $input.nonExistent === undefined;
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("exists")).toBe("value");
+      expect(blackboard.get("missing")).toBeUndefined();
+      expect(blackboard.get("isMissing")).toBe(true);
+    });
+
+    it("should prevent writes to $input (read-only)", async () => {
+      context.input = Object.freeze({ value: 100 });
+
+      const node = new Script({
+        id: "script-1",
+        code: "$input.value = 200;",
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.FAILURE);
+      expect(node.lastError).toContain("read-only");
+    });
+
+    it("should work with empty input", async () => {
+      // context.input is undefined
+
+      const node = new Script({
+        id: "script-1",
+        code: `
+          $bb.hasInput = $input.anyKey !== undefined;
+          $bb.result = 'success';
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("hasInput")).toBe(false);
+      expect(blackboard.get("result")).toBe("success");
+    });
+
+    it("should handle input arrays", async () => {
+      context.input = Object.freeze({
+        items: [1, 2, 3, 4, 5],
+        tags: ["urgent", "high-priority"],
+      });
+
+      const node = new Script({
+        id: "script-1",
+        code: `
+          const sum = $input.items.reduce((a, b) => a + b, 0);
+          $bb.itemSum = sum;
+          $bb.itemCount = $input.items.length;
+          $bb.firstTag = $input.tags[0];
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("itemSum")).toBe(15);
+      expect(blackboard.get("itemCount")).toBe(5);
+      expect(blackboard.get("firstTag")).toBe("urgent");
+    });
+
+    it("should combine $input with $bb operations", async () => {
+      context.input = Object.freeze({ multiplier: 10 });
+      blackboard.set("baseValue", 5);
+
+      const node = new Script({
+        id: "script-1",
+        code: "$bb.result = $bb.baseValue * $input.multiplier;",
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("result")).toBe(50);
+    });
+  });
+
+  describe("Environment variable access via $env", () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+      // Set up test environment variables
+      process.env = {
+        ...originalEnv,
+        TEST_API_KEY: "secret-key-123",
+        TEST_API_URL: "https://api.example.com",
+        TEST_DEBUG_MODE: "true",
+        TEST_RETRY_COUNT: "3",
+        SENSITIVE_VAR: "should-not-be-accessible",
+      };
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it("should read allowed environment variables", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: `
+          $bb.apiKey = $env.TEST_API_KEY;
+          $bb.apiUrl = $env.TEST_API_URL;
+        `,
+        allowedEnvVars: ["TEST_API_KEY", "TEST_API_URL"],
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("apiKey")).toBe("secret-key-123");
+      expect(blackboard.get("apiUrl")).toBe("https://api.example.com");
+    });
+
+    it("should not expose non-allowed environment variables", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: `
+          $bb.allowed = $env.TEST_API_KEY;
+          $bb.notAllowed = $env.SENSITIVE_VAR;
+          $bb.isUndefined = $env.SENSITIVE_VAR === undefined;
+        `,
+        allowedEnvVars: ["TEST_API_KEY"], // SENSITIVE_VAR not in list
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("allowed")).toBe("secret-key-123");
+      expect(blackboard.get("notAllowed")).toBeUndefined();
+      expect(blackboard.get("isUndefined")).toBe(true);
+    });
+
+    it("should return undefined for non-existent env vars even if allowed", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: `
+          $bb.missing = $env.NON_EXISTENT_VAR;
+          $bb.isMissing = $env.NON_EXISTENT_VAR === undefined;
+        `,
+        allowedEnvVars: ["NON_EXISTENT_VAR"],
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("missing")).toBeUndefined();
+      expect(blackboard.get("isMissing")).toBe(true);
+    });
+
+    it("should prevent writes to $env (read-only)", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: "$env.TEST_API_KEY = 'hacked';",
+        allowedEnvVars: ["TEST_API_KEY"],
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.FAILURE);
+      expect(node.lastError).toContain("read-only");
+    });
+
+    it("should have empty $env when no allowedEnvVars specified", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: `
+          $bb.apiKey = $env.TEST_API_KEY;
+          $bb.isUndefined = $env.TEST_API_KEY === undefined;
+        `,
+        // No allowedEnvVars - defaults to empty array
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("apiKey")).toBeUndefined();
+      expect(blackboard.get("isUndefined")).toBe(true);
+    });
+
+    it("should use env vars for configuration", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: `
+          const debugMode = $env.TEST_DEBUG_MODE === 'true';
+          const retryCount = parseInt($env.TEST_RETRY_COUNT || '1', 10);
+          $bb.debugMode = debugMode;
+          $bb.retryCount = retryCount;
+        `,
+        allowedEnvVars: ["TEST_DEBUG_MODE", "TEST_RETRY_COUNT"],
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("debugMode")).toBe(true);
+      expect(blackboard.get("retryCount")).toBe(3);
+    });
+
+    it("should work with default values for missing env vars", async () => {
+      const node = new Script({
+        id: "script-1",
+        code: `
+          const timeout = $env.TIMEOUT || '5000';
+          $bb.timeout = parseInt(timeout, 10);
+        `,
+        allowedEnvVars: ["TIMEOUT"], // This env var doesn't exist
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("timeout")).toBe(5000);
+    });
+  });
+
+  describe("Combined $bb, $input, and $env usage", () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+      process.env = {
+        ...originalEnv,
+        TAX_RATE: "0.08",
+        DISCOUNT_CODE_VALID: "SUMMER2024",
+      };
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it("should combine all three sources for calculation", async () => {
+      context.input = Object.freeze({
+        orderId: "ORD-999",
+        discountCode: "SUMMER2024",
+      });
+      blackboard.set("subtotal", 100);
+      blackboard.set("quantity", 3);
+
+      const node = new Script({
+        id: "calculate-order",
+        code: `
+          const subtotal = $bb.subtotal * $bb.quantity;
+          const taxRate = parseFloat($env.TAX_RATE || '0');
+          const validCode = $env.DISCOUNT_CODE_VALID;
+
+          let discount = 0;
+          if ($input.discountCode === validCode) {
+            discount = subtotal * 0.1; // 10% discount
+          }
+
+          $bb.orderId = $input.orderId;
+          $bb.subtotal = subtotal;
+          $bb.tax = subtotal * taxRate;
+          $bb.discount = discount;
+          $bb.total = subtotal + (subtotal * taxRate) - discount;
+        `,
+        allowedEnvVars: ["TAX_RATE", "DISCOUNT_CODE_VALID"],
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("orderId")).toBe("ORD-999");
+      expect(blackboard.get("subtotal")).toBe(300);
+      expect(blackboard.get("tax")).toBe(24); // 300 * 0.08
+      expect(blackboard.get("discount")).toBe(30); // 300 * 0.1
+      expect(blackboard.get("total")).toBe(294); // 300 + 24 - 30
+    });
+
+    it("should handle real-world API configuration scenario", async () => {
+      context.input = Object.freeze({
+        endpoint: "/users",
+        userId: "user-123",
+      });
+      blackboard.set("baseUrl", "https://api.example.com");
+
+      process.env.API_VERSION = "v2";
+      process.env.API_TIMEOUT = "30000";
+
+      const node = new Script({
+        id: "build-api-request",
+        code: `
+          const version = $env.API_VERSION || 'v1';
+          const timeout = parseInt($env.API_TIMEOUT || '5000', 10);
+
+          $bb.fullUrl = $bb.baseUrl + '/' + version + $input.endpoint + '/' + $input.userId;
+          $bb.timeout = timeout;
+          $bb.requestConfig = {
+            url: $bb.fullUrl,
+            timeout: timeout,
+            userId: $input.userId,
+          };
+        `,
+        allowedEnvVars: ["API_VERSION", "API_TIMEOUT"],
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("fullUrl")).toBe("https://api.example.com/v2/users/user-123");
+      expect(blackboard.get("timeout")).toBe(30000);
+      expect(blackboard.get("requestConfig")).toEqual({
+        url: "https://api.example.com/v2/users/user-123",
+        timeout: 30000,
+        userId: "user-123",
+      });
+    });
+
+    it("should maintain isolation: $input cannot modify $bb or $env", async () => {
+      context.input = Object.freeze({ value: 100 });
+      blackboard.set("originalValue", "unchanged");
+
+      const node = new Script({
+        id: "script-1",
+        code: `
+          // This should work
+          $bb.newValue = $input.value * 2;
+
+          // These should not affect original sources
+          const inputCopy = { ...$input };
+          inputCopy.value = 999;
+
+          $bb.inputStillOriginal = $input.value === 100;
+          $bb.bbStillOriginal = $bb.originalValue === 'unchanged';
+        `,
+      });
+
+      const status = await node.tick(context);
+
+      expect(status).toBe(NodeStatus.SUCCESS);
+      expect(blackboard.get("newValue")).toBe(200);
+      expect(blackboard.get("inputStillOriginal")).toBe(true);
+      expect(blackboard.get("bbStillOriginal")).toBe(true);
+    });
+  });
 });

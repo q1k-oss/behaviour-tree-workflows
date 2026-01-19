@@ -1,8 +1,15 @@
 /**
  * LogMessage Node - Log messages for debugging and test visibility
  *
- * Utility node that logs messages to console with optional blackboard value resolution.
+ * Utility node that logs messages to console with optional variable resolution.
  * Useful for debugging test flows and tracking execution progress.
+ *
+ * Supports variable resolution:
+ * - ${key} - Shorthand for blackboard (backward compatible)
+ * - ${input.key} - Workflow input parameters
+ * - ${bb.key} - Blackboard values
+ * - ${env.KEY} - Environment variables
+ * - ${param.key} - Test data parameters
  *
  * Use Cases:
  * - Log intermediate values during test execution
@@ -13,6 +20,7 @@
  * Examples:
  * - Log static message: <LogMessage message="Starting form submission" />
  * - Log blackboard value: <LogMessage message="Current URL: ${currentUrl}" />
+ * - Log input value: <LogMessage message="Order ID: ${input.orderId}" />
  * - Log with level: <LogMessage message="Error occurred" level="error" />
  */
 
@@ -23,17 +31,18 @@ import {
   type NodeConfiguration,
   NodeStatus,
 } from "../types.js";
+import { resolveString, type VariableContext } from "./variable-resolver.js";
 
 /**
  * Configuration for LogMessage node
  */
 export interface LogMessageConfig extends NodeConfiguration {
-  message: string; // Message to log (supports ${key} placeholders for blackboard values)
+  message: string; // Message to log (supports ${key}, ${input.key}, ${bb.key}, ${env.KEY})
   level?: "info" | "warn" | "error" | "debug"; // Log level (default: 'info')
 }
 
 /**
- * LogMessage Node - Logs messages with optional blackboard value resolution
+ * LogMessage Node - Logs messages with optional variable resolution
  */
 export class LogMessage extends ActionNode {
   private message: string;
@@ -47,7 +56,7 @@ export class LogMessage extends ActionNode {
 
   async executeTick(context: TemporalContext): Promise<NodeStatus> {
     try {
-      // Resolve blackboard values in message (supports ${key} syntax)
+      // Resolve variable references in message
       const resolvedMessage = this.resolveMessage(this.message, context);
 
       // Log based on level
@@ -90,36 +99,36 @@ export class LogMessage extends ActionNode {
   }
 
   /**
-   * Resolve blackboard values in message string
-   * Supports ${key} syntax for blackboard references
+   * Resolve variable references in message string
+   * Supports ${key}, ${input.key}, ${bb.key}, ${env.KEY}, ${param.key}
    */
   private resolveMessage(message: string, context: TemporalContext): string {
-    // Match ${key} patterns
-    const placeholderRegex = /\$\{([^}]+)\}/g;
+    const varCtx: VariableContext = {
+      blackboard: context.blackboard,
+      input: context.input,
+      testData: context.testData,
+    };
 
-    return message.replace(placeholderRegex, (match, key) => {
-      const trimmedKey = key.trim();
-      const value = context.blackboard.get(trimmedKey);
+    const resolved = resolveString(message, varCtx);
 
-      // If value is undefined, return the placeholder as-is
-      if (value === undefined) {
-        return match;
+    // Always return a string for logging
+    if (typeof resolved === "string") {
+      return resolved;
+    }
+
+    // If resolved to non-string (shouldn't happen for message templates), stringify
+    if (resolved === null) {
+      return "null";
+    }
+
+    if (typeof resolved === "object") {
+      try {
+        return JSON.stringify(resolved);
+      } catch {
+        return String(resolved);
       }
+    }
 
-      // Format the value for display
-      if (value === null) {
-        return "null";
-      }
-
-      if (typeof value === "object") {
-        try {
-          return JSON.stringify(value);
-        } catch {
-          return String(value);
-        }
-      }
-
-      return String(value);
-    });
+    return String(resolved);
   }
 }

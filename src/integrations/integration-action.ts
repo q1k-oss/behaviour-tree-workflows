@@ -3,7 +3,7 @@
  * Execute third-party service actions via Active Pieces packages
  *
  * Features:
- * - Blackboard variable resolution (${bb.key} syntax)
+ * - Variable resolution: ${input.key}, ${bb.key}, ${env.KEY}, ${param.key}
  * - Pluggable token provider for OAuth/API key authentication
  * - Dynamic Active Pieces action execution
  * - Result storage in blackboard
@@ -17,6 +17,7 @@ import {
   NodeStatus,
 } from "../types.js";
 import { executePieceAction, type PieceAuth } from "./piece-executor.js";
+import { resolveValue, type VariableContext } from "../utilities/variable-resolver.js";
 
 /**
  * Token provider function type
@@ -36,7 +37,7 @@ export interface IntegrationActionConfig extends NodeConfiguration {
   provider: string;
   /** Action name from Active Pieces: 'append_row', 'send_message', etc. */
   action: string;
-  /** Action inputs (supports ${bb.key} for blackboard values) */
+  /** Action inputs (supports ${input.key}, ${bb.key}, ${env.KEY}, ${param.key}) */
   inputs?: Record<string, unknown>;
   /** Connection ID to use (optional, defaults to user's primary connection) */
   connectionId?: string;
@@ -64,6 +65,12 @@ export interface IntegrationContext extends TemporalContext {
  * Executes actions on third-party services using Active Pieces packages.
  * Requires a token provider to be set in context for authentication.
  *
+ * Supports variable resolution:
+ * - ${input.key} - Workflow input parameters
+ * - ${bb.key} - Blackboard values
+ * - ${env.KEY} - Environment variables
+ * - ${param.key} - Test data parameters
+ *
  * @example
  * ```yaml
  * type: IntegrationAction
@@ -72,10 +79,10 @@ export interface IntegrationContext extends TemporalContext {
  *   provider: google-sheets
  *   action: append_row
  *   inputs:
- *     spreadsheetId: "${bb.spreadsheetId}"
+ *     spreadsheetId: "${input.spreadsheetId}"
  *     sheetName: "Orders"
  *     values:
- *       - "${bb.orderId}"
+ *       - "${input.orderId}"
  *       - "${bb.customerName}"
  *       - "${bb.total}"
  * ```
@@ -159,91 +166,19 @@ export class IntegrationAction extends ActionNode {
   }
 
   /**
-   * Resolve blackboard references in inputs
-   * Supports ${bb.key} syntax for simple values and nested objects/arrays
+   * Resolve variable references in inputs
+   * Supports ${input.key}, ${bb.key}, ${env.KEY}, ${param.key}
    */
   private resolveInputs(context: TemporalContext): Record<string, unknown> {
-    return this.resolveValue(this.inputs, context) as Record<string, unknown>;
+    const varCtx: VariableContext = {
+      blackboard: context.blackboard,
+      input: context.input,
+      testData: context.testData,
+    };
+    // Use preserveUndefined: false to return empty string/undefined for missing values
+    // This matches the original behavior
+    return resolveValue(this.inputs, varCtx, { preserveUndefined: false }) as Record<string, unknown>;
   }
-
-  /**
-   * Recursively resolve blackboard references in a value
-   */
-  private resolveValue(value: unknown, context: TemporalContext): unknown {
-    if (typeof value === "string") {
-      return this.resolveString(value, context);
-    }
-
-    if (Array.isArray(value)) {
-      return value.map((item) => this.resolveValue(item, context));
-    }
-
-    if (value !== null && typeof value === "object") {
-      const resolved: Record<string, unknown> = {};
-      for (const [key, val] of Object.entries(value)) {
-        resolved[key] = this.resolveValue(val, context);
-      }
-      return resolved;
-    }
-
-    return value;
-  }
-
-  /**
-   * Resolve blackboard references in a string
-   * Supports:
-   * - Full replacement: "${bb.key}" -> value
-   * - Template literals: "Hello ${bb.name}!" -> "Hello John!"
-   */
-  private resolveString(str: string, context: TemporalContext): unknown {
-    // Pattern for ${bb.key} or ${bb.nested.key}
-    const bbPattern = /\$\{bb\.([a-zA-Z0-9_.]+)\}/g;
-
-    // Check if entire string is a single blackboard reference
-    const fullMatch = str.match(/^\$\{bb\.([a-zA-Z0-9_.]+)\}$/);
-    if (fullMatch && fullMatch[1]) {
-      const key = fullMatch[1];
-      return this.getNestedValue(context.blackboard, key);
-    }
-
-    // Otherwise, do string interpolation
-    return str.replace(bbPattern, (_, key) => {
-      const value = this.getNestedValue(context.blackboard, key);
-      return value !== undefined ? String(value) : "";
-    });
-  }
-
-  /**
-   * Get a possibly nested value from the blackboard
-   * Supports dot notation: "user.profile.name"
-   */
-  private getNestedValue(
-    blackboard: TemporalContext["blackboard"],
-    key: string
-  ): unknown {
-    const parts = key.split(".");
-    const firstPart = parts[0];
-
-    if (!firstPart) {
-      return undefined;
-    }
-
-    // First part is the blackboard key
-    let value: unknown = blackboard.get(firstPart);
-
-    // Navigate through nested properties
-    for (let i = 1; i < parts.length && value !== undefined; i++) {
-      const part = parts[i];
-      if (part && typeof value === "object" && value !== null) {
-        value = (value as Record<string, unknown>)[part];
-      } else {
-        return undefined;
-      }
-    }
-
-    return value;
-  }
-
 }
 
 /**

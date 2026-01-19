@@ -17,6 +17,12 @@ export interface ScriptConfiguration extends NodeConfiguration {
   code: string;
   /** Execution timeout in milliseconds (default: 5000) */
   timeout?: number;
+  /**
+   * Allowed environment variable names accessible via $env
+   * For security, only explicitly listed vars are exposed
+   * If not provided, $env will be an empty object
+   */
+  allowedEnvVars?: string[];
 }
 
 /**
@@ -24,7 +30,9 @@ export interface ScriptConfiguration extends NodeConfiguration {
  *
  * Features:
  * - Full JavaScript support (ES2020+)
- * - Blackboard access via $bb proxy
+ * - Blackboard access via $bb proxy (read/write)
+ * - Workflow input access via $input proxy (read-only)
+ * - Environment variable access via $env proxy (read-only, allowlisted)
  * - Async/await support
  * - Secure sandboxing (no access to Node.js APIs)
  * - Configurable timeout
@@ -36,12 +44,18 @@ export interface ScriptConfiguration extends NodeConfiguration {
  * props:
  *   code: |
  *     const { price, quantity } = $bb;
- *     $bb.total = price * quantity;
+ *     const taxRate = $env.TAX_RATE || 0.1;
+ *     const orderId = $input.orderId;
+ *     $bb.total = price * quantity * (1 + taxRate);
+ *   allowedEnvVars:
+ *     - TAX_RATE
+ *     - CURRENCY
  * ```
  */
 export class Script extends ActionNode {
   private code: string;
   private timeout: number;
+  private allowedEnvVars: string[];
 
   constructor(config: ScriptConfiguration) {
     super(config);
@@ -54,6 +68,7 @@ export class Script extends ActionNode {
 
     this.code = scriptCode;
     this.timeout = config.timeout ?? 5000;
+    this.allowedEnvVars = config.allowedEnvVars ?? [];
   }
 
   protected async executeTick(context: TemporalContext): Promise<NodeStatus> {
@@ -78,10 +93,37 @@ export class Script extends ActionNode {
         }
       }
 
-      // Transfer snapshot to isolate
+      // Create snapshot of workflow input (read-only)
+      const inputSnapshot: Record<string, unknown> = {};
+      if (context.input) {
+        for (const [key, value] of Object.entries(context.input)) {
+          if (this.isSerializable(value)) {
+            inputSnapshot[key] = value;
+          }
+        }
+      }
+
+      // Create snapshot of allowed environment variables (read-only)
+      const envSnapshot: Record<string, string> = {};
+      for (const varName of this.allowedEnvVars) {
+        const value = process.env[varName];
+        if (value !== undefined) {
+          envSnapshot[varName] = value;
+        }
+      }
+
+      // Transfer snapshots to isolate
       await jail.set(
         "__bbSnapshot",
         new ivm.ExternalCopy(bbSnapshot).copyInto()
+      );
+      await jail.set(
+        "__inputSnapshot",
+        new ivm.ExternalCopy(inputSnapshot).copyInto()
+      );
+      await jail.set(
+        "__envSnapshot",
+        new ivm.ExternalCopy(envSnapshot).copyInto()
       );
 
       // Track changes made in isolate - store as JSON strings for safe transfer
@@ -94,7 +136,7 @@ export class Script extends ActionNode {
       });
       await jail.set("__setBB", setBBRef);
 
-      // Wrapper script that provides $bb proxy
+      // Wrapper script that provides $bb, $input, and $env proxies
       // Note: setTimeout is provided as a simple busy-wait for short delays
       const wrappedCode = `
         (async () => {
@@ -124,6 +166,32 @@ export class Script extends ActionNode {
                 __setBB.applySync(undefined, [key, JSON.stringify(value)]);
               }
               return true;
+            }
+          });
+
+          // Create $input proxy (read-only) for workflow input parameters
+          const $input = new Proxy(__inputSnapshot, {
+            get: (target, key) => {
+              if (typeof key === 'string') {
+                return target[key];
+              }
+              return undefined;
+            },
+            set: () => {
+              throw new Error('$input is read-only. Use $bb to store computed values.');
+            }
+          });
+
+          // Create $env proxy (read-only) for allowed environment variables
+          const $env = new Proxy(__envSnapshot, {
+            get: (target, key) => {
+              if (typeof key === 'string') {
+                return target[key];
+              }
+              return undefined;
+            },
+            set: () => {
+              throw new Error('$env is read-only.');
             }
           });
 
