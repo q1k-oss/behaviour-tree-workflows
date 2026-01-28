@@ -1,11 +1,14 @@
 /**
  * Temporal Worker
- * Registers and runs behavior tree workflows
+ * Registers and runs behavior tree workflows with activity support
  */
 
 import { NativeConnection, Worker, bundleWorkflowCode } from "@temporalio/worker";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+
+// Import activities
+import * as activities from "./activities.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,6 +24,9 @@ async function run() {
   console.log("📦 Bundling workflows...");
   const { code } = await bundleWorkflowCode({
     workflowsPath: join(__dirname, "workflows.ts"),
+    // Ignore modules that are used by btree but not needed in workflow context
+    // Note: 'vm' is used by js-interpreter but not at runtime in the workflow
+    ignoreModules: ["fs", "fs/promises", "path", "vm"],
     webpackConfigHook: (config) => {
       config.target = "webworker";
       if (config.output) {
@@ -33,8 +39,6 @@ async function run() {
         splitChunks: false,
         runtimeChunk: false,
       };
-      // Ensure all modules are bundled inline
-      config.externals = [];
       return config;
     },
   });
@@ -46,6 +50,7 @@ async function run() {
     namespace: "default",
     workflowBundle: { code },
     taskQueue: "btree-workflows",
+    activities, // Register activity implementations
   });
 
   console.log("✅ Worker started successfully!");

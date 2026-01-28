@@ -4,9 +4,14 @@
  */
 
 import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { Connection, Client } from "@temporalio/client";
 import { Registry } from "../../dist/index.js";
 import type { YamlWorkflowArgs } from "./yaml-workflow-loader.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function run() {
   console.log("🔌 Connecting to Temporal server at localhost:7233...");
@@ -27,27 +32,43 @@ async function run() {
       name: "Simple Sequence",
       file: "../yaml-workflows/01-simple-sequence.yaml",
       id: "simple-sequence",
+      input: {},
     },
     {
       name: "Parallel with Timeout",
       file: "../yaml-workflows/02-parallel-timeout.yaml",
       id: "parallel-timeout",
+      input: {},
     },
     {
-      name: "Order Processing",
-      file: "../yaml-workflows/05-order-processing.yaml",
-      id: "order-processing",
+      name: "Activity Test (IntegrationAction via Activity)",
+      file: "../yaml-workflows/07-activity-simple-test.yaml",
+      id: "activity-test",
+      input: {
+        spreadsheetId: "test-spreadsheet-123",
+        orderId: "ORD-" + Date.now(),
+        customerName: "John Doe",
+        amount: 99.99,
+      },
     },
+    // {
+    //   name: "Order Processing",
+    //   file: "../yaml-workflows/05-order-processing.yaml",
+    //   id: "order-processing",
+    //   input: {},
+    // },
     // Complex workflows (comment out for initial test)
     // {
     //   name: "E-commerce Checkout",
     //   file: "../yaml-workflows/03-ecommerce-checkout.yaml",
     //   id: "ecommerce-checkout",
+    //   input: {},
     // },
     // {
     //   name: "AI Agent Workflow",
     //   file: "../yaml-workflows/04-ai-agent-workflow.yaml",
     //   id: "ai-agent",
+    //   input: {},
     // },
   ];
 
@@ -59,11 +80,11 @@ async function run() {
 
     try {
       // Load YAML content from file
-      const yamlContent = readFileSync(workflow.file, "utf-8");
+      const yamlContent = readFileSync(join(__dirname, workflow.file), "utf-8");
 
       // Create workflow args with YAML content
       const args: YamlWorkflowArgs = {
-        input: {},
+        input: workflow.input || {},
         treeRegistry,
         yamlContent,
       };

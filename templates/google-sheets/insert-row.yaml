@@ -1,0 +1,76 @@
+# Template: GoogleSheets.InsertRow
+#
+# Friendly interface for inserting rows into Google Sheets.
+# Handles data transformation to Active Pieces format.
+#
+# Expected inputs (set on blackboard before calling):
+#   tpl_spreadsheet: string   - Spreadsheet ID
+#   tpl_sheet: number         - Sheet index (default: 0)
+#   tpl_values: array|object  - Values as array or { "Column": "value" }
+#
+# Output:
+#   tpl_result: object        - Result from insert operation
+
+type: Sequence
+id: google-sheets-insert-row
+children:
+  # Step 1: Validate and prepare inputs
+  - type: CodeExecution
+    id: _prepare-inputs
+    props:
+      language: javascript
+      code: |
+        const spreadsheet = getBB('tpl_spreadsheet');
+        if (!spreadsheet) {
+          throw new Error('Missing required input: tpl_spreadsheet');
+        }
+
+        const sheet = getBB('tpl_sheet');
+        const sheetId = (sheet === undefined || sheet === null) ? 0 : Number(sheet);
+
+        const values = getBB('tpl_values');
+        if (!values) {
+          throw new Error('Missing required input: tpl_values');
+        }
+
+        // Transform values to Active Pieces format
+        let transformed;
+        if (Array.isArray(values)) {
+          transformed = { values: values };
+        } else if (typeof values === 'object') {
+          transformed = { values: Object.values(values) };
+        }
+
+        // Store prepared values
+        setBB('tpl_spreadsheetId', spreadsheet);
+        setBB('tpl_sheetId', sheetId);
+        setBB('tpl_transformedValues', transformed);
+
+  # Step 2: Log what we're doing
+  - type: LogMessage
+    id: _log-insert
+    props:
+      message: "Inserting row into sheet ${tpl_spreadsheetId}"
+      level: debug
+
+  # Step 3: Execute the insert
+  - type: IntegrationAction
+    id: _do-insert
+    props:
+      provider: google
+      action: insert_row
+      inputs:
+        spreadsheetId: "${bb.tpl_spreadsheetId}"
+        sheetId: "${bb.tpl_sheetId}"
+        first_row_headers: false
+        as_string: true
+        values: "${bb.tpl_transformedValues}"
+
+  # Step 4: Store result for caller
+  - type: CodeExecution
+    id: _store-result
+    props:
+      language: javascript
+      code: |
+        const result = getBB('_do-insert.result');
+        setBB('tpl_result', result);

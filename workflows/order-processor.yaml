@@ -1,0 +1,59 @@
+# Order Processor SubTree
+# A reusable workflow that processes an order and calculates totals
+#
+# Params (passed in):
+#   - orderId: string
+#   - items: Array<{ name: string, price: number, quantity: number }>
+#   - customerName: string
+#
+# Outputs (exported back):
+#   - orderResult: { orderId, subtotal, tax, total, itemCount }
+#   - orderStatus: "SUCCESS" | "FAILED"
+
+type: Sequence
+id: order-processor-flow
+children:
+  # Calculate order totals
+  - type: CodeExecution
+    id: calculate-totals
+    props:
+      language: javascript
+      code: |
+        // Read params from blackboard (passed via SubTree params)
+        const orderId = getBB('orderId');
+        const items = getBB('items') || [];
+        const customerName = getBB('customerName');
+
+        // Tax rate (could be configured)
+        const taxRate = 0.08;
+
+        // Calculate totals
+        let subtotal = 0;
+        let itemCount = 0;
+
+        for (const item of items) {
+          subtotal += item.price * item.quantity;
+          itemCount += item.quantity;
+        }
+
+        const tax = Math.round(subtotal * taxRate * 100) / 100;
+        const total = Math.round((subtotal + tax) * 100) / 100;
+
+        // Store results
+        setBB('orderResult', {
+          orderId,
+          customerName,
+          subtotal,
+          tax,
+          taxRate,
+          total,
+          itemCount,
+          processedAt: new Date().toISOString()
+        });
+        setBB('orderStatus', 'SUCCESS');
+
+  - type: LogMessage
+    id: log-result
+    props:
+      message: "Order ${bb.orderId} processed: ${bb.orderResult.itemCount} items, total $${bb.orderResult.total}"
+      level: info

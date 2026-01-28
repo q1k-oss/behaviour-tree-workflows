@@ -1,0 +1,12 @@
+# Temporal Python SDK
+temporalio>=1.0.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# String matching / fuzzy matching
+rapidfuzz>=3.0.0
+
+# Excel file support
+openpyxl>=3.1.0

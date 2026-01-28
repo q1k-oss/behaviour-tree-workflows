@@ -1,0 +1,141 @@
+# File Processing Workflow
+#
+# This workflow demonstrates the complete data pipeline:
+# 1. Parse a CSV file into structured data
+# 2. Transform data using CodeExecution node
+# 3. Generate output file (CSV/Excel/JSON)
+#
+# Run with: BTREE_MOCK_ACTIVITIES=true to use mock responses
+#
+# Expected input:
+#   csvFile: string - Path to input CSV file
+
+type: Sequence
+id: file-processing-workflow
+children:
+  # Step 1: Log start
+  - type: LogMessage
+    id: log-start
+    props:
+      message: "Starting file processing workflow for ${input.csvFile}"
+      level: info
+
+  # Step 2: Parse input CSV file
+  - type: ParseFile
+    id: parse-input
+    props:
+      file: "${input.csvFile}"
+      format: csv
+      outputKey: "rawData"
+      options:
+        trim: true
+
+  # Step 3: Log parsed data info
+  - type: CodeExecution
+    id: log-parse-result
+    props:
+      language: javascript
+      code: |
+        const data = getBB('rawData') || [];
+        console.log('Parsed ' + data.length + ' rows');
+        setBB('rowCount', data.length);
+
+  - type: LogMessage
+    id: log-parsed
+    props:
+      message: "Parsed ${bb.rowCount} rows from input file"
+      level: info
+
+  # Step 4: Transform data
+  - type: CodeExecution
+    id: transform-data
+    props:
+      language: javascript
+      code: |
+        const data = getBB('rawData') || [];
+
+        // Calculate totals
+        let totalAmount = 0;
+        let totalQuantity = 0;
+
+        const processedData = data.map(function(row) {
+          const quantity = parseFloat(row.quantity) || 0;
+          const price = parseFloat(row.price) || 0;
+          const lineTotal = quantity * price;
+
+          totalAmount += lineTotal;
+          totalQuantity += quantity;
+
+          return {
+            orderId: row.orderId,
+            product: row.product,
+            quantity: quantity,
+            price: price,
+            lineTotal: lineTotal
+          };
+        });
+
+        setBB('processedData', processedData);
+        setBB('totalAmount', totalAmount);
+        setBB('totalQuantity', totalQuantity);
+        setBB('timestamp', new Date().toISOString().split('T')[0]);
+
+        console.log('Processed ' + processedData.length + ' items');
+        console.log('Total amount: ' + totalAmount);
+
+  # Step 5: Log transformation result
+  - type: LogMessage
+    id: log-transform
+    props:
+      message: "Transformed data: ${bb.processedData.length} items, total: $${bb.totalAmount}"
+      level: info
+
+  # Step 6: Generate output CSV file
+  - type: GenerateFile
+    id: export-csv
+    props:
+      format: csv
+      dataKey: "processedData"
+      columns:
+        - header: "Order ID"
+          key: "orderId"
+        - header: "Product"
+          key: "product"
+        - header: "Quantity"
+          key: "quantity"
+        - header: "Unit Price"
+          key: "price"
+        - header: "Line Total"
+          key: "lineTotal"
+      filename: "output-${bb.timestamp}.csv"
+      storage: temp
+      outputKey: "outputFile"
+
+  # Step 7: Log output file info
+  - type: LogMessage
+    id: log-output
+    props:
+      message: "Generated output file: ${bb.outputFile.filename} (${bb.outputFile.size} bytes)"
+      level: info
+
+  # Step 8: Create summary
+  - type: CodeExecution
+    id: create-summary
+    props:
+      language: javascript
+      code: |
+        setBB('summary', {
+          inputFile: getInput('csvFile'),
+          rowsProcessed: getBB('rowCount'),
+          totalQuantity: getBB('totalQuantity'),
+          totalAmount: getBB('totalAmount'),
+          outputFile: getBB('outputFile').filename,
+          outputPath: getBB('outputFile').path,
+          processedAt: new Date().toISOString()
+        });
+
+  - type: LogMessage
+    id: log-complete
+    props:
+      message: "File processing complete. Summary: ${bb.summary}"
+      level: info

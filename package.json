@@ -9,16 +9,16 @@
     "clean": "rm -rf dist",
     "dev": "tsup-node src/index.ts --watch --format cjs,esm --dts",
     "build": "npm run clean && tsup-node src/index.ts --format cjs,esm --dts",
-    "scripting:generate": "bash scripts/generate-script-parser.sh",
     "typecheck": "tsc --noEmit",
     "test": "CI=true vitest --coverage",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "@activepieces/piece-google-sheets": "^0.14.0",
+    "@activepieces/pieces-framework": "^0.23.0",
     "@temporalio/activity": "^1.10.0",
     "@temporalio/workflow": "^1.10.0",
-    "antlr4": "^4.13.2",
     "js-yaml": "^4.1.1",
     "zod": "^4.2.1"
   },

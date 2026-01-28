@@ -185,9 +185,16 @@ export class BehaviorTree {
         treeRegistry: args.treeRegistry,
         timestamp: Date.now(),
         sessionId: args.sessionId || `session-${Date.now()}`,
+        // Store input immutably for ${input.key} resolution
+        input: args.input ? Object.freeze({ ...args.input }) : undefined,
+        // Pass activities for I/O operations (deterministic Temporal execution)
+        activities: args.activities,
+        // Pass tokenProvider for IntegrationAction authentication
+        tokenProvider: args.tokenProvider,
       };
 
-      // Initialize blackboard with input
+      // Also copy input to blackboard for backward compatibility
+      // This allows ${key} or ${bb.key} to access input values
       if (args.input) {
         for (const [key, value] of Object.entries(args.input)) {
           context.blackboard.set(key, value);

@@ -1,0 +1,44 @@
+# Order Validation Template
+# Validates order data before processing
+#
+# Inputs (expected on blackboard):
+#   - orderId: string
+#   - items: array of order items
+#   - customerId: string (optional)
+#
+# Outputs (set on blackboard):
+#   - validationPassed: boolean
+#   - validationErrors: array of error messages
+
+type: Sequence
+id: order-validation
+name: Order Validation
+
+children:
+  - type: LogMessage
+    id: start-validation
+    props:
+      message: "Starting order validation for order: ${orderId}"
+      level: info
+
+  - type: Selector
+    id: validate-all
+    children:
+      - type: Sequence
+        id: all-checks
+        children:
+          - type: LogMessage
+            id: check-order-id
+            props:
+              message: "Validating order ID..."
+
+          - type: LogMessage
+            id: check-items
+            props:
+              message: "Validating order items..."
+
+          - type: LogMessage
+            id: validation-complete
+            props:
+              message: "Order validation completed successfully"
+              level: info

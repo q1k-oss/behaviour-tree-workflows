@@ -1,0 +1,142 @@
+# Process Order Workflow
+#
+# This workflow demonstrates runtime variables:
+# - ${input.key} - Workflow input parameters (immutable)
+# - ${bb.key} - Blackboard state (mutable)
+# - SubTree params/outputs for function-like reusability
+# - CodeExecution node with getBB/setBB/getInput functions
+#
+# Input parameters (passed when workflow starts):
+#   - orderId: string
+#   - customerId: string
+#   - items: Array<{ name: string, price: number, quantity: number }>
+#
+# Output:
+#   - Final blackboard state with orderResult, notifications sent, etc.
+
+type: Sequence
+id: process-order-workflow
+children:
+  # Step 1: Log workflow start using input parameters
+  - type: LogMessage
+    id: log-start
+    props:
+      message: "Starting order processing for Order: ${input.orderId}, Customer: ${input.customerId}"
+      level: info
+
+  # Step 2: Fetch customer info
+  - type: CodeExecution
+    id: fetch-customer
+    props:
+      language: javascript
+      code: |
+        // Access workflow input via getInput (read-only)
+        const customerId = getInput('customerId');
+
+        // Simulate customer lookup
+        const customers = {
+          'CUST-001': { name: 'John Doe', email: 'john@example.com', tier: 'gold' },
+          'CUST-002': { name: 'Jane Smith', email: 'jane@example.com', tier: 'silver' },
+          'CUST-003': { name: 'Bob Wilson', email: 'bob@example.com', tier: 'bronze' }
+        };
+
+        const customer = customers[customerId] || {
+          name: 'Guest Customer',
+          email: 'guest@example.com',
+          tier: 'standard'
+        };
+
+        // Store in blackboard for later steps
+        setBB('customer', customer);
+
+  - type: LogMessage
+    id: log-customer
+    props:
+      message: "Customer found: ${bb.customer.name} (${bb.customer.tier} tier)"
+      level: info
+
+  # Step 3: Call SubTree with params and outputs
+  # This demonstrates function-like reusability
+  - type: SubTree
+    id: process-order
+    props:
+      treeId: "order-processor"
+      # Pass resolved values to subtree
+      params:
+        orderId: "${input.orderId}"
+        items: "${input.items}"
+        customerName: "${bb.customer.name}"
+      # Export results back to parent blackboard
+      outputs:
+        - orderResult
+        - orderStatus
+
+  - type: LogMessage
+    id: log-order-complete
+    props:
+      message: "Order processing complete. Status: ${bb.orderStatus}"
+      level: info
+
+  # Step 4: Apply tier discount
+  - type: CodeExecution
+    id: apply-discount
+    props:
+      language: javascript
+      code: |
+        // Access from different sources
+        const orderId = getInput('orderId');
+        const customer = getBB('customer');
+        const baseDiscount = 0;  // Could be configured
+
+        // Tier-based discounts
+        const tierDiscounts = {
+          'gold': 0.15,
+          'silver': 0.10,
+          'bronze': 0.05,
+          'standard': 0
+        };
+
+        const tierDiscount = tierDiscounts[customer.tier] || 0;
+        const totalDiscount = baseDiscount + tierDiscount;
+
+        // Calculate final price
+        const orderResult = getBB('orderResult');
+        const discountAmount = Math.round(orderResult.total * totalDiscount * 100) / 100;
+        const finalTotal = Math.round((orderResult.total - discountAmount) * 100) / 100;
+
+        setBB('finalOrder', {
+          ...orderResult,
+          customerTier: customer.tier,
+          discountPercent: totalDiscount * 100,
+          discountAmount,
+          finalTotal
+        });
+
+  - type: LogMessage
+    id: log-final
+    props:
+      message: "Final order for ${bb.customer.name}: $${bb.finalOrder.finalTotal} (${bb.finalOrder.discountPercent}% discount applied)"
+      level: info
+
+  # Step 5: Send notification (simulated)
+  - type: CodeExecution
+    id: send-notification
+    props:
+      language: javascript
+      code: |
+        const customer = getBB('customer');
+        const order = getBB('finalOrder');
+
+        // Simulate sending email
+        setBB('notification', {
+          to: customer.email,
+          subject: 'Order Confirmation - ' + order.orderId,
+          body: 'Thank you for your order! Total: $' + order.finalTotal,
+          sentAt: new Date().toISOString()
+        });
+
+  - type: LogMessage
+    id: log-notification
+    props:
+      message: "Notification sent to ${bb.notification.to}"
+      level: info

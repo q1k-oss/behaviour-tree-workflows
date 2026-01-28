@@ -1,0 +1,43 @@
+# Simple Activity Test Workflow
+#
+# This workflow tests the activity execution pattern for IntegrationAction.
+# Uses input values directly (no Script node needed).
+#
+# Run with: BTREE_MOCK_ACTIVITIES=true to use mock responses
+#
+# Expected input:
+#   spreadsheetId: string - Google Sheets spreadsheet ID
+#   orderId: string - Order ID to append
+#   customerName: string - Customer name
+#   amount: number - Order amount
+
+type: Sequence
+id: simple-activity-test
+children:
+  # Step 1: Simple print to verify workflow starts
+  - type: PrintAction
+    id: print-start
+    props:
+      message: "Starting activity test"
+
+  # Step 2: Execute IntegrationAction (will use activity in Temporal mode)
+  # Pass input values directly - no blackboard prep needed
+  - type: IntegrationAction
+    id: append-to-sheet
+    props:
+      provider: google-sheets
+      action: append_row
+      inputs:
+        spreadsheetId: "${input.spreadsheetId}"
+        sheetName: "Orders"
+        values:
+          - "${input.orderId}"
+          - "${input.customerName}"
+          - "${input.amount}"
+      resultKey: "sheetResult"
+
+  # Step 3: Print success
+  - type: PrintAction
+    id: print-result
+    props:
+      message: "Successfully appended row"
