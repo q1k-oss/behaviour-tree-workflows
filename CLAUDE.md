@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-@wayfarer-ai/btree-workflows is a behavior tree library for TypeScript, designed for AI-native workflows. It provides 22+ production-ready nodes, YAML workflow definitions, and native Temporal integration for durable execution.
+@wayfarer-ai/btree-workflows is a behavior tree library for TypeScript, designed for AI-native workflows. It provides 30+ production-ready nodes, YAML workflow definitions, native Temporal integration for durable execution, and built-in observability.
 
 ## Commands
 
@@ -19,9 +19,6 @@ npm run clean            # Remove dist/
 npm test                 # Run all tests with coverage (CI=true)
 npm run test:watch       # Watch mode
 npm run test:ui          # Vitest UI
-
-# Scripting (requires Java for ANTLR)
-npm run scripting:generate  # Regenerate Script node parser
 ```
 
 ## Architecture
@@ -31,13 +28,14 @@ npm run scripting:generate  # Regenerate Script node parser
 - **ScopedBlackboard**: Hierarchical key-value store with scope inheritance
 - **TickEngine**: Executes tree via tick loop with auto exponential backoff
 - **Registry**: Factory for creating nodes from YAML/JSON definitions
+- **ExecutionTracker**: Aggregates events into queryable state (progress, errors, timeline)
 
 ### Node Types
 | Category | Count | Examples |
 |----------|-------|----------|
 | Composites | 10 | Sequence, Selector, Parallel, ForEach, While, Conditional, Recovery |
 | Decorators | 10 | Timeout, Delay, Repeat, Invert, ForceSuccess, RunOnce, Precondition |
-| Actions | 9 | PrintAction, Script, LogMessage, WaitAction, CheckCondition |
+| Actions | 9 | PrintAction, CodeExecution, LogMessage, HttpRequest, GenerateFile |
 
 ### Directory Structure
 ```
@@ -50,9 +48,15 @@ src/
 ├── events.ts             # NodeEventEmitter for lifecycle events
 ├── composites/           # Composite nodes (Sequence, Parallel, etc.)
 ├── decorators/           # Decorator nodes (Timeout, Repeat, etc.)
-├── scripting/            # Script node + ANTLR parser
-│   ├── ScriptLang.g4     # ANTLR grammar
-│   └── generated/        # Generated parser (committed)
+├── actions/              # Activity-based action nodes
+│   ├── code-execution.ts # CodeExecution (JS/Python via Microsandbox)
+│   ├── http-request.ts   # HttpRequest (REST API calls)
+│   └── generate-file.ts  # GenerateFile (CSV/JSON export)
+├── data-store/           # DataStore for large payloads
+├── observability/        # Execution tracking and error capture
+│   ├── types.ts          # ExecutionProgress, StructuredError, TimelineEntry
+│   ├── execution-tracker.ts  # State aggregation from events
+│   └── sinks.ts          # Temporal workflow sink types
 ├── schemas/              # Zod schemas for node props
 ├── yaml/                 # YAML loading + validation
 └── utils/                # Shared utilities
@@ -101,16 +105,32 @@ export async function myWorkflow(args: WorkflowArgs): Promise<WorkflowResult> {
 5. Register in `registerStandardNodes()` or custom registry
 6. Write tests covering SUCCESS/FAILURE/RUNNING states
 
-### Script Node DSL
-The Script node uses ANTLR4 for parsing. Supports:
-- Variable assignments: `x = 10`
-- Arithmetic: `+`, `-`, `*`, `/`, `%`
-- Comparisons: `==`, `!=`, `>`, `<`, `>=`, `<=`
-- Logical: `&&`, `||`, `!`
-- Property access: `user.profile.name`
-- Built-in functions: `param("key")`, `env("VAR")`
+### CodeExecution Node
+The CodeExecution node runs JavaScript or Python in a secure sandbox (Microsandbox).
 
-To modify grammar, edit `src/scripting/ScriptLang.g4` and run `npm run scripting:generate` (requires Java).
+**JavaScript Example:**
+```yaml
+type: CodeExecution
+props:
+  language: javascript
+  code: |
+    const users = getBB('apiUsers');
+    const processed = users.map(u => ({ id: u.id, name: u.name }));
+    setBB('processedUsers', processed);
+```
+
+**Python Example:**
+```yaml
+type: CodeExecution
+props:
+  language: python
+  packages: [pandas]
+  code: |
+    users = getBB('users')
+    setBB('count', len(users))
+```
+
+Available functions: `getBB(key)`, `setBB(key, value)`, `getInput(key)`, `console.log`/`print`.
 
 ### Error Handling
 Nodes that fail should set `this._lastError` with descriptive context:
@@ -129,6 +149,29 @@ await engine.tick(blackboard);
 const snapshots = engine.getSnapshots();  // Only captured when state changes
 engine.clearSnapshots();  // Always clear to prevent memory growth
 ```
+
+### Observability
+The library includes an observability module for tracking execution:
+
+```typescript
+import { ExecutionTracker, NodeEventEmitter } from '@wayfarer-ai/btree';
+
+const tracker = new ExecutionTracker(totalNodes);
+const eventEmitter = new NodeEventEmitter();
+
+// Subscribe to all events
+eventEmitter.onAll((event) => tracker.onNodeEvent(event));
+
+// Query state
+tracker.getProgress();    // { totalNodes, completedNodes, failedNodes, status }
+tracker.getErrors();      // Structured errors with blackboard snapshots
+tracker.getTimeline();    // Chronological execution trace
+```
+
+All node types automatically emit ERROR events with:
+- Error message and stack trace
+- Blackboard snapshot at time of error
+- Heuristic-based fix suggestions
 
 ## Testing Guidelines
 - Use `describe/it` structure

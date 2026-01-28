@@ -110,13 +110,14 @@ type: Sequence
 id: insert-orders
 children:
   # --- Insert Header Row ---
-  - type: Script
+  - type: CodeExecution
     id: set-header-inputs
     props:
+      language: javascript
       code: |
-        $bb.tpl_spreadsheet = '${spreadsheetId}';
-        $bb.tpl_sheet = 0;
-        $bb.tpl_values = ['Order ID', 'Customer', 'Amount', 'Status'];
+        setBB('tpl_spreadsheet', '${spreadsheetId}');
+        setBB('tpl_sheet', 0);
+        setBB('tpl_values', ['Order ID', 'Customer', 'Amount', 'Status']);
 
   - type: SubTree
     id: insert-header
@@ -130,18 +131,19 @@ children:
       level: info
 
   # --- Insert Data Row 1 ---
-  - type: Script
+  - type: CodeExecution
     id: set-row1-inputs
     props:
+      language: javascript
       code: |
-        $bb.tpl_spreadsheet = '${spreadsheetId}';
-        $bb.tpl_sheet = 0;
-        $bb.tpl_values = {
+        setBB('tpl_spreadsheet', '${spreadsheetId}');
+        setBB('tpl_sheet', 0);
+        setBB('tpl_values', {
           'Order ID': 'ORD-001',
           'Customer': 'John Doe',
           'Amount': '99.99',
           'Status': 'Completed'
-        };
+        });
 
   - type: SubTree
     id: insert-row-1
@@ -155,18 +157,19 @@ children:
       level: info
 
   # --- Insert Data Row 2 ---
-  - type: Script
+  - type: CodeExecution
     id: set-row2-inputs
     props:
+      language: javascript
       code: |
-        $bb.tpl_spreadsheet = '${spreadsheetId}';
-        $bb.tpl_sheet = 0;
-        $bb.tpl_values = {
+        setBB('tpl_spreadsheet', '${spreadsheetId}');
+        setBB('tpl_sheet', 0);
+        setBB('tpl_values', {
           'Order ID': 'ORD-002',
           'Customer': 'Jane Smith',
           'Amount': '149.50',
           'Status': 'Pending'
-        };
+        });
 
   - type: SubTree
     id: insert-row-2

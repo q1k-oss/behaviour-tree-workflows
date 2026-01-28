@@ -32,8 +32,7 @@ import { reactiveSequenceConfigurationSchema } from "../composites/reactive-sequ
 import { memorySequenceConfigurationSchema } from "../composites/memory-sequence.schema.js";
 import { recoveryConfigurationSchema } from "../composites/recovery.schema.js";
 
-// Import action schemas
-import { scriptConfigurationSchema } from "../scripting/script-node.schema.js";
+// Action schemas - Script removed, use CodeExecution instead
 
 /**
  * Central registry mapping node types to their validation schemas
@@ -95,8 +94,7 @@ export class SchemaRegistry {
     this.register("MemorySequence", memorySequenceConfigurationSchema);
     this.register("Recovery", recoveryConfigurationSchema);
 
-    // Register action schemas
-    this.register("Script", scriptConfigurationSchema);
+    // Action schemas - Script removed, use CodeExecution instead
   }
 
   /**

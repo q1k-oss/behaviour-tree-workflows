@@ -3,9 +3,8 @@
 # This workflow demonstrates runtime variables:
 # - ${input.key} - Workflow input parameters (immutable)
 # - ${bb.key} - Blackboard state (mutable)
-# - ${env.KEY} - Environment variables
 # - SubTree params/outputs for function-like reusability
-# - Script node $input, $env, $bb proxies
+# - CodeExecution node with getBB/setBB/getInput functions
 #
 # Input parameters (passed when workflow starts):
 #   - orderId: string
@@ -25,13 +24,14 @@ children:
       message: "Starting order processing for Order: ${input.orderId}, Customer: ${input.customerId}"
       level: info
 
-  # Step 2: Fetch customer info (simulated with Script)
-  - type: Script
+  # Step 2: Fetch customer info
+  - type: CodeExecution
     id: fetch-customer
     props:
+      language: javascript
       code: |
-        // Access workflow input via $input (read-only)
-        const customerId = $input.customerId;
+        // Access workflow input via getInput (read-only)
+        const customerId = getInput('customerId');
 
         // Simulate customer lookup
         const customers = {
@@ -47,7 +47,7 @@ children:
         };
 
         // Store in blackboard for later steps
-        $bb.customer = customer;
+        setBB('customer', customer);
 
   - type: LogMessage
     id: log-customer
@@ -77,15 +77,16 @@ children:
       message: "Order processing complete. Status: ${bb.orderStatus}"
       level: info
 
-  # Step 4: Apply tier discount using Script with all three sources
-  - type: Script
+  # Step 4: Apply tier discount
+  - type: CodeExecution
     id: apply-discount
     props:
+      language: javascript
       code: |
-        // Access all three sources in one script
-        const orderId = $input.orderId;              // From workflow input
-        const customer = $bb.customer;               // From blackboard
-        const baseDiscount = parseFloat($env.BASE_DISCOUNT || '0');  // From env
+        // Access from different sources
+        const orderId = getInput('orderId');
+        const customer = getBB('customer');
+        const baseDiscount = 0;  // Could be configured
 
         // Tier-based discounts
         const tierDiscounts = {
@@ -99,19 +100,17 @@ children:
         const totalDiscount = baseDiscount + tierDiscount;
 
         // Calculate final price
-        const orderResult = $bb.orderResult;
+        const orderResult = getBB('orderResult');
         const discountAmount = Math.round(orderResult.total * totalDiscount * 100) / 100;
         const finalTotal = Math.round((orderResult.total - discountAmount) * 100) / 100;
 
-        $bb.finalOrder = {
+        setBB('finalOrder', {
           ...orderResult,
           customerTier: customer.tier,
           discountPercent: totalDiscount * 100,
           discountAmount,
           finalTotal
-        };
-      allowedEnvVars:
-        - BASE_DISCOUNT
+        });
 
   - type: LogMessage
     id: log-final
@@ -120,20 +119,21 @@ children:
       level: info
 
   # Step 5: Send notification (simulated)
-  - type: Script
+  - type: CodeExecution
     id: send-notification
     props:
+      language: javascript
       code: |
-        const customer = $bb.customer;
-        const order = $bb.finalOrder;
+        const customer = getBB('customer');
+        const order = getBB('finalOrder');
 
         // Simulate sending email
-        $bb.notification = {
+        setBB('notification', {
           to: customer.email,
           subject: 'Order Confirmation - ' + order.orderId,
           body: 'Thank you for your order! Total: $' + order.finalTotal,
           sentAt: new Date().toISOString()
-        };
+        });
 
   - type: LogMessage
     id: log-notification

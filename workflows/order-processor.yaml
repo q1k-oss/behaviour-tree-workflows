@@ -13,18 +13,19 @@
 type: Sequence
 id: order-processor-flow
 children:
-  # Calculate order totals using Script node
-  - type: Script
+  # Calculate order totals
+  - type: CodeExecution
     id: calculate-totals
     props:
+      language: javascript
       code: |
         // Read params from blackboard (passed via SubTree params)
-        const orderId = $bb.orderId;
-        const items = $bb.items;
-        const customerName = $bb.customerName;
+        const orderId = getBB('orderId');
+        const items = getBB('items') || [];
+        const customerName = getBB('customerName');
 
-        // Read tax rate from environment (allowlisted)
-        const taxRate = parseFloat($env.TAX_RATE || '0.08');
+        // Tax rate (could be configured)
+        const taxRate = 0.08;
 
         // Calculate totals
         let subtotal = 0;
@@ -39,7 +40,7 @@ children:
         const total = Math.round((subtotal + tax) * 100) / 100;
 
         // Store results
-        $bb.orderResult = {
+        setBB('orderResult', {
           orderId,
           customerName,
           subtotal,
@@ -48,10 +49,8 @@ children:
           total,
           itemCount,
           processedAt: new Date().toISOString()
-        };
-        $bb.orderStatus = 'SUCCESS';
-      allowedEnvVars:
-        - TAX_RATE
+        });
+        setBB('orderStatus', 'SUCCESS');
 
   - type: LogMessage
     id: log-result

@@ -14,20 +14,21 @@
 type: Sequence
 id: google-sheets-insert-row
 children:
-  # Step 1: Validate and prepare inputs using Script
-  - type: Script
+  # Step 1: Validate and prepare inputs
+  - type: CodeExecution
     id: _prepare-inputs
     props:
+      language: javascript
       code: |
-        const spreadsheet = $bb.tpl_spreadsheet;
+        const spreadsheet = getBB('tpl_spreadsheet');
         if (!spreadsheet) {
           throw new Error('Missing required input: tpl_spreadsheet');
         }
 
-        const sheet = $bb.tpl_sheet;
+        const sheet = getBB('tpl_sheet');
         const sheetId = (sheet === undefined || sheet === null) ? 0 : Number(sheet);
 
-        const values = $bb.tpl_values;
+        const values = getBB('tpl_values');
         if (!values) {
           throw new Error('Missing required input: tpl_values');
         }
@@ -40,10 +41,10 @@ children:
           transformed = { values: Object.values(values) };
         }
 
-        // Store prepared values (use underscore, not dot, to avoid nested lookup issues)
-        $bb.tpl_spreadsheetId = spreadsheet;
-        $bb.tpl_sheetId = sheetId;
-        $bb.tpl_transformedValues = transformed;
+        // Store prepared values
+        setBB('tpl_spreadsheetId', spreadsheet);
+        setBB('tpl_sheetId', sheetId);
+        setBB('tpl_transformedValues', transformed);
 
   # Step 2: Log what we're doing
   - type: LogMessage
@@ -66,8 +67,10 @@ children:
         values: "${bb.tpl_transformedValues}"
 
   # Step 4: Store result for caller
-  - type: Script
+  - type: CodeExecution
     id: _store-result
     props:
+      language: javascript
       code: |
-        $bb.tpl_result = $bb['_do-insert.result'];
+        const result = getBB('_do-insert.result');
+        setBB('tpl_result', result);

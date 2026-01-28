@@ -187,6 +187,10 @@ export class BehaviorTree {
         sessionId: args.sessionId || `session-${Date.now()}`,
         // Store input immutably for ${input.key} resolution
         input: args.input ? Object.freeze({ ...args.input }) : undefined,
+        // Pass activities for I/O operations (deterministic Temporal execution)
+        activities: args.activities,
+        // Pass tokenProvider for IntegrationAction authentication
+        tokenProvider: args.tokenProvider,
       };
 
       // Also copy input to blackboard for backward compatibility

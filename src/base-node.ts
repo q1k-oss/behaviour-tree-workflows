@@ -196,19 +196,26 @@ export abstract class ActionNode extends BaseNode {
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
 
       // Store the error message
       this._lastError = errorMessage;
       this._status = NodeStatus.FAILURE;
 
-      // Emit ERROR event
+      // Emit ERROR event with proper format for ExecutionTracker
       context.eventEmitter?.emit({
         type: NodeEventType.ERROR,
         nodeId: this.id,
         nodeName: this.name,
         nodeType: this.type,
         timestamp: Date.now(),
-        data: { error: errorMessage },
+        data: {
+          error: {
+            message: errorMessage,
+            stack: errorStack,
+          },
+          blackboard: context.blackboard?.toJSON?.() ?? {},
+        },
       });
 
       // Emit TICK_END with FAILURE status
@@ -288,19 +295,26 @@ export abstract class ConditionNode extends BaseNode {
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
 
       // Store the error message
       this._lastError = errorMessage;
       this._status = NodeStatus.FAILURE;
 
-      // Emit ERROR event
+      // Emit ERROR event with proper format for ExecutionTracker
       context.eventEmitter?.emit({
         type: NodeEventType.ERROR,
         nodeId: this.id,
         nodeName: this.name,
         nodeType: this.type,
         timestamp: Date.now(),
-        data: { error: errorMessage },
+        data: {
+          error: {
+            message: errorMessage,
+            stack: errorStack,
+          },
+          blackboard: context.blackboard?.toJSON?.() ?? {},
+        },
       });
 
       // Emit TICK_END with FAILURE status
@@ -380,19 +394,26 @@ export abstract class DecoratorNode extends BaseNode {
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
 
       // Store the error message
       this._lastError = errorMessage;
       this._status = NodeStatus.FAILURE;
 
-      // Emit ERROR event
+      // Emit ERROR event with proper format for ExecutionTracker
       context.eventEmitter?.emit({
         type: NodeEventType.ERROR,
         nodeId: this.id,
         nodeName: this.name,
         nodeType: this.type,
         timestamp: Date.now(),
-        data: { error: errorMessage },
+        data: {
+          error: {
+            message: errorMessage,
+            stack: errorStack,
+          },
+          blackboard: context.blackboard?.toJSON?.() ?? {},
+        },
       });
 
       // Emit TICK_END with FAILURE status
@@ -495,19 +516,26 @@ export abstract class CompositeNode extends BaseNode {
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
 
       // Store the error message
       this._lastError = errorMessage;
       this._status = NodeStatus.FAILURE;
 
-      // Emit ERROR event
+      // Emit ERROR event with proper format for ExecutionTracker
       context.eventEmitter?.emit({
         type: NodeEventType.ERROR,
         nodeId: this.id,
         nodeName: this.name,
         nodeType: this.type,
         timestamp: Date.now(),
-        data: { error: errorMessage },
+        data: {
+          error: {
+            message: errorMessage,
+            stack: errorStack,
+          },
+          blackboard: context.blackboard?.toJSON?.() ?? {},
+        },
       });
 
       // Emit TICK_END with FAILURE status

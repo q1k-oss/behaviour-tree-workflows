@@ -14,20 +14,16 @@ import { ConfigurationError } from "../errors.js";
 import {
   type TemporalContext,
   type NodeConfiguration,
+  type PieceActivityRequest,
+  type PieceAuth,
+  type TokenProvider,
   NodeStatus,
 } from "../types.js";
-import { executePieceAction, type PieceAuth } from "./piece-executor.js";
+import { executePieceAction } from "./piece-executor.js";
 import { resolveValue, type VariableContext } from "../utilities/variable-resolver.js";
 
-/**
- * Token provider function type
- * Implementations can fetch tokens from controlplane, environment, etc.
- */
-export type TokenProvider = (
-  context: TemporalContext,
-  provider: string,
-  connectionId?: string
-) => Promise<PieceAuth>;
+// Re-export TokenProvider for backward compatibility
+export type { TokenProvider } from "../types.js";
 
 /**
  * Configuration for IntegrationAction node
@@ -139,13 +135,8 @@ export class IntegrationAction extends ActionNode {
       );
       this.log(`Got authentication for provider: ${this.provider}`);
 
-      // 3. Execute Active Pieces action
-      const result = await executePieceAction({
-        provider: this.provider,
-        action: this.action,
-        inputs: resolvedInputs,
-        auth,
-      });
+      // 3. Execute via activity (if available) or inline (standalone mode)
+      const result = await this.executeAction(context, resolvedInputs, auth);
 
       // 4. Store result in blackboard if enabled
       if (this.storeResult) {
@@ -163,6 +154,34 @@ export class IntegrationAction extends ActionNode {
       this.log(`Integration action failed: ${this._lastError}`);
       return NodeStatus.FAILURE;
     }
+  }
+
+  /**
+   * Dual-mode execution:
+   * - Activity mode: Use context.activities (deterministic for Temporal)
+   * - Standalone mode: Inline executePieceAction (for testing)
+   */
+  private async executeAction(
+    context: TemporalContext,
+    inputs: Record<string, unknown>,
+    auth: PieceAuth
+  ): Promise<unknown> {
+    const request: PieceActivityRequest = {
+      provider: this.provider,
+      action: this.action,
+      inputs,
+      auth,
+    };
+
+    // Activity mode: deterministic execution
+    if (context.activities?.executePieceAction) {
+      this.log(`Executing via activity: ${this.provider}/${this.action}`);
+      return context.activities.executePieceAction(request);
+    }
+
+    // Standalone mode: inline execution (for testing without Temporal)
+    this.log(`Executing inline (standalone): ${this.provider}/${this.action}`);
+    return executePieceAction(request);
   }
 
   /**

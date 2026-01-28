@@ -1,0 +1,137 @@
+# HTTP Request Workflow
+#
+# This workflow demonstrates the HttpRequest node for making API calls:
+# 1. Fetch data from an API
+# 2. Process the response
+# 3. Make a POST request with the processed data
+#
+# Run with: BTREE_MOCK_ACTIVITIES=true to use mock responses
+#
+# Expected input:
+#   userId: string - User ID to fetch
+#   apiBaseUrl: string - Base URL for API (optional, defaults to example.com)
+
+type: Sequence
+id: http-request-workflow
+children:
+  # Step 1: Log start
+  - type: LogMessage
+    id: log-start
+    props:
+      message: "Starting HTTP request workflow for user ${input.userId}"
+      level: info
+
+  # Step 2: Set default base URL if not provided
+  - type: CodeExecution
+    id: setup-config
+    props:
+      language: javascript
+      code: |
+        const apiBaseUrl = getInput('apiBaseUrl') || 'https://api.example.com';
+        setBB('apiBaseUrl', apiBaseUrl);
+        setBB('authToken', 'mock-auth-token-123');
+        console.log('API Base URL:', apiBaseUrl);
+
+  # Step 3: Fetch user data via GET request
+  - type: HttpRequest
+    id: fetch-user
+    props:
+      url: "${bb.apiBaseUrl}/users/${input.userId}"
+      method: GET
+      headers:
+        Authorization: "Bearer ${bb.authToken}"
+        Accept: "application/json"
+      timeout: 5000
+      responseType: json
+      outputKey: "userResponse"
+
+  # Step 4: Log user response
+  - type: LogMessage
+    id: log-user-response
+    props:
+      message: "Fetched user data: status=${bb.userResponse.status}"
+      level: info
+
+  # Step 5: Process user data
+  - type: CodeExecution
+    id: process-user-data
+    props:
+      language: javascript
+      code: |
+        const response = getBB('userResponse') || {};
+        const userData = response.data || {};
+        const userId = getInput('userId');
+
+        setBB('user', {
+          id: userData.id || userId,
+          name: userData.name || 'Unknown',
+          email: userData.email || 'unknown@example.com'
+        });
+
+        // Prepare order to create
+        const user = getBB('user');
+        setBB('newOrder', {
+          userId: user.id,
+          items: [
+            { productId: 'PROD-001', quantity: 2 },
+            { productId: 'PROD-002', quantity: 1 }
+          ],
+          timestamp: new Date().toISOString()
+        });
+
+        console.log('Prepared order for user:', user.name);
+
+  # Step 6: Create order via POST request
+  - type: HttpRequest
+    id: create-order
+    props:
+      url: "${bb.apiBaseUrl}/orders"
+      method: POST
+      headers:
+        Authorization: "Bearer ${bb.authToken}"
+        Content-Type: "application/json"
+      body: "${bb.newOrder}"
+      timeout: 10000
+      retry:
+        maxAttempts: 3
+        backoffMs: 1000
+      responseType: json
+      outputKey: "orderResponse"
+
+  # Step 7: Log order response
+  - type: LogMessage
+    id: log-order-response
+    props:
+      message: "Created order: status=${bb.orderResponse.status}, orderId=${bb.orderResponse.data.orderId}"
+      level: info
+
+  # Step 8: Create final summary
+  - type: CodeExecution
+    id: create-summary
+    props:
+      language: javascript
+      code: |
+        const user = getBB('user');
+        const orderResponse = getBB('orderResponse');
+        const userResponse = getBB('userResponse');
+        const newOrder = getBB('newOrder');
+
+        setBB('summary', {
+          user: user,
+          order: {
+            id: orderResponse.data?.orderId || 'unknown',
+            status: orderResponse.data?.status || 'created',
+            itemCount: newOrder.items.length
+          },
+          apiCalls: {
+            getUserStatus: userResponse.status,
+            createOrderStatus: orderResponse.status
+          },
+          completedAt: new Date().toISOString()
+        });
+
+  - type: LogMessage
+    id: log-complete
+    props:
+      message: "HTTP workflow complete. Summary: ${bb.summary}"
+      level: info

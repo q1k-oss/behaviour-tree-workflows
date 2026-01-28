@@ -40,8 +40,7 @@ import {
   WaitAction,
 } from "./test-nodes.js";
 
-// Scripting
-import { Script } from "./scripting/script-node.js";
+// Scripting - Script node removed, use CodeExecution instead
 
 // Utilities
 import { LogMessage } from "./utilities/log-message.js";
@@ -49,6 +48,13 @@ import { RegexExtract } from "./utilities/regex-extract.js";
 
 // Integrations
 import { IntegrationAction } from "./integrations/integration-action.js";
+
+// Activity-based action nodes
+import { PythonScript } from "./actions/python-script.js";
+import { ParseFile } from "./actions/parse-file.js";
+import { GenerateFile } from "./actions/generate-file.js";
+import { HttpRequest } from "./actions/http-request.js";
+import { CodeExecution } from "./actions/code-execution.js";
 
 /**
  * Register all standard built-in nodes to a registry
@@ -123,8 +129,7 @@ export function registerStandardNodes(registry: Registry): void {
   });
   registry.register("WaitAction", WaitAction as any, { category: "action" });
 
-  // Scripting
-  registry.register("Script", Script as any, { category: "action" });
+  // Scripting - Script node removed, use CodeExecution instead
 
   // Utilities
   registry.register("LogMessage", LogMessage as any, { category: "action" });
@@ -132,4 +137,11 @@ export function registerStandardNodes(registry: Registry): void {
 
   // Integrations
   registry.register("IntegrationAction", IntegrationAction as any, { category: "action" });
+
+  // Activity-based action nodes (require activities in context)
+  registry.register("PythonScript", PythonScript as any, { category: "action" });
+  registry.register("ParseFile", ParseFile as any, { category: "action" });
+  registry.register("GenerateFile", GenerateFile as any, { category: "action" });
+  registry.register("HttpRequest", HttpRequest as any, { category: "action" });
+  registry.register("CodeExecution", CodeExecution as any, { category: "action" });
 }

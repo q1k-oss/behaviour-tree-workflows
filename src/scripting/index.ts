@@ -1,7 +1,22 @@
 /**
- * Scripting support for behavior trees
- * Executes JavaScript in isolated V8 sandbox for secure blackboard manipulation
+ * Scripting module (deprecated)
+ *
+ * The Script node has been replaced by CodeExecution which uses
+ * Microsandbox for secure, isolated code execution.
+ *
+ * Use CodeExecution instead:
+ * @example
+ * ```yaml
+ * type: CodeExecution
+ * id: transform-data
+ * props:
+ *   language: javascript  # or 'python'
+ *   code: |
+ *     const users = getBB('users');
+ *     setBB('count', users.length);
+ * ```
+ *
+ * @see CodeExecution in src/actions/code-execution.ts
  */
 
-export type { ScriptConfiguration } from "./script-node.js";
-export { Script, validateScriptSyntax } from "./script-node.js";
+// No exports - use CodeExecution instead

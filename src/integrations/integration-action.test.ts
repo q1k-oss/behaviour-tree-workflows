@@ -343,6 +343,179 @@ describe("IntegrationAction Node", () => {
   });
 });
 
+describe("Activity execution mode", () => {
+  let blackboard: ScopedBlackboard;
+  let registry: Registry;
+
+  // Mock token provider that returns a test token
+  const mockTokenProvider: TokenProvider = vi.fn(async () => ({
+    access_token: "test_token_123",
+  }));
+
+  beforeEach(() => {
+    blackboard = new ScopedBlackboard();
+    registry = new Registry();
+    vi.clearAllMocks();
+  });
+
+  it("should use activity when provided in context", async () => {
+    const mockActivity = vi.fn().mockResolvedValue({ success: true });
+
+    const context: IntegrationContext = {
+      blackboard,
+      treeRegistry: registry,
+      timestamp: Date.now(),
+      deltaTime: 0,
+      tokenProvider: mockTokenProvider,
+      activities: { executePieceAction: mockActivity },
+    };
+
+    const node = new IntegrationAction({
+      id: "test",
+      provider: "google-sheets",
+      action: "append_row",
+      inputs: { spreadsheetId: "123" },
+    });
+
+    const status = await node.tick(context);
+
+    expect(status).toBe(NodeStatus.SUCCESS);
+    expect(mockActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "google-sheets",
+        action: "append_row",
+        inputs: { spreadsheetId: "123" },
+        auth: { access_token: "test_token_123" },
+      })
+    );
+  });
+
+  it("should fall back to inline execution without activity", async () => {
+    // This test verifies that the node attempts inline execution when no activity is provided
+    // Due to vi.mock in an earlier test, executePieceAction is mocked globally
+    const context: IntegrationContext = {
+      blackboard,
+      treeRegistry: registry,
+      timestamp: Date.now(),
+      deltaTime: 0,
+      tokenProvider: mockTokenProvider,
+      activities: undefined, // No activities provided - should fall back to inline
+    };
+
+    const node = new IntegrationAction({
+      id: "test",
+      provider: "google-sheets",
+      action: "append_row",
+      inputs: { spreadsheetId: "123" },
+    });
+
+    // With the global mock, this will succeed via inline execution
+    // The important thing is it doesn't fail with "no activity" error
+    const status = await node.tick(context);
+
+    // Succeeds because vi.mock mocks executePieceAction
+    expect(status).toBe(NodeStatus.SUCCESS);
+    // No error about missing activities
+    expect(node.lastError).toBeUndefined();
+  });
+
+  it("should handle activity execution errors", async () => {
+    const failingActivity = vi
+      .fn()
+      .mockRejectedValue(new Error("API timeout"));
+
+    const context: IntegrationContext = {
+      blackboard,
+      treeRegistry: registry,
+      timestamp: Date.now(),
+      deltaTime: 0,
+      tokenProvider: mockTokenProvider,
+      activities: { executePieceAction: failingActivity },
+    };
+
+    const node = new IntegrationAction({
+      id: "test",
+      provider: "slack",
+      action: "send_message",
+      inputs: { channel: "#general", text: "Hello" },
+    });
+
+    const status = await node.tick(context);
+
+    expect(status).toBe(NodeStatus.FAILURE);
+    expect(node.lastError).toContain("API timeout");
+  });
+
+  it("should store activity result in blackboard", async () => {
+    const mockActivity = vi.fn().mockResolvedValue({
+      messageId: "msg-123",
+      timestamp: "2024-01-15T10:30:00Z"
+    });
+
+    const context: IntegrationContext = {
+      blackboard,
+      treeRegistry: registry,
+      timestamp: Date.now(),
+      deltaTime: 0,
+      tokenProvider: mockTokenProvider,
+      activities: { executePieceAction: mockActivity },
+    };
+
+    const node = new IntegrationAction({
+      id: "send-slack",
+      provider: "slack",
+      action: "send_message",
+      inputs: { channel: "#general", text: "Hello" },
+      resultKey: "slack.response",
+    });
+
+    await node.tick(context);
+
+    expect(blackboard.get("slack.response")).toEqual({
+      messageId: "msg-123",
+      timestamp: "2024-01-15T10:30:00Z",
+    });
+  });
+
+  it("should pass resolved inputs to activity", async () => {
+    const mockActivity = vi.fn().mockResolvedValue({ success: true });
+
+    blackboard.set("targetChannel", "#engineering");
+    blackboard.set("userName", "Alice");
+
+    const context: IntegrationContext = {
+      blackboard,
+      treeRegistry: registry,
+      timestamp: Date.now(),
+      deltaTime: 0,
+      input: { messagePrefix: "Notification:" },
+      tokenProvider: mockTokenProvider,
+      activities: { executePieceAction: mockActivity },
+    };
+
+    const node = new IntegrationAction({
+      id: "notify",
+      provider: "slack",
+      action: "send_message",
+      inputs: {
+        channel: "${bb.targetChannel}",
+        text: "${input.messagePrefix} Hello ${bb.userName}!",
+      },
+    });
+
+    await node.tick(context);
+
+    expect(mockActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputs: {
+          channel: "#engineering",
+          text: "Notification: Hello Alice!",
+        },
+      })
+    );
+  });
+});
+
 describe("envTokenProvider", () => {
   const originalEnv = process.env;
 

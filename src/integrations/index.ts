@@ -18,6 +18,13 @@ export {
   listPieceActions,
   isPieceInstalled,
   clearPieceCache,
-  type PieceAuth,
-  type PieceActionRequest,
 } from "./piece-executor.js";
+
+// Re-export types from types.ts for convenience
+export type {
+  PieceAuth,
+  PieceActivityRequest,
+} from "../types.js";
+
+// Backward compatibility alias
+export type { PieceActivityRequest as PieceActionRequest } from "../types.js";

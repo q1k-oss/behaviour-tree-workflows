@@ -63,12 +63,22 @@ const FULL_MATCH_PATTERN = /^\$\{(input|bb|env|param)\.([a-zA-Z0-9_.]+)\}$|^\$\{
  * // Interpolation - returns string
  * resolveString("Hello ${bb.name}!", ctx) // returns "Hello John!"
  */
+// Safe reference to process.env that works in both Node.js and browser/sandbox environments
+const safeProcessEnv = (): Record<string, string | undefined> => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    return typeof process !== "undefined" && process?.env ? process.env : {};
+  } catch {
+    return {};
+  }
+};
+
 export function resolveString(
   str: string,
   ctx: VariableContext,
   opts: ResolveOptions = {}
 ): unknown {
-  const { preserveUndefined = true, envSource = process.env } = opts;
+  const { preserveUndefined = true, envSource = safeProcessEnv() } = opts;
 
   // Check if entire string is a single variable reference (for type preservation)
   const fullMatch = str.match(FULL_MATCH_PATTERN);

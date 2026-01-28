@@ -35,6 +35,8 @@ export interface NodeEvent<TData> {
   nodeName: string;
   nodeType: string;
   timestamp: number;
+  /** Tree path (e.g., "/0/1/2") - set by tree execution */
+  nodePath?: string;
   data?: TData;
 }
 

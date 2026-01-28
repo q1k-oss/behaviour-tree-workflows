@@ -274,25 +274,46 @@ children:
 
 ## Actions
 
-### Script
-Execute JavaScript in isolated sandbox. Access blackboard via `$bb`.
+### CodeExecution
+Execute JavaScript or Python code in a secure sandboxed environment via Microsandbox.
 
 ```yaml
-type: Script
-id: transform-data
+type: CodeExecution
+id: calculate-total
 props:
-  timeout: 5000  # Optional, default 5000ms
+  language: javascript  # or 'python'
+  timeout: 30000  # Optional, default 30000ms
   code: |
-    const items = $bb.items || [];
-    $bb.count = items.length;
-    $bb.total = items.reduce((sum, i) => sum + i.price, 0);
+    const items = getBB('items') || [];
+    const taxRate = 0.1;
+    const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const total = subtotal * (1 + taxRate);
+    setBB('total', total);
+    setBB('itemCount', items.length);
 ```
 
-**$bb is a proxy:**
-- Read: `const x = $bb.myKey`
-- Write: `$bb.myKey = value`
-- Nested: `const name = $bb.user.name` (read from `user` object)
-- Set nested: `$bb.result = { a: 1, b: 2 }`
+**Python Example:**
+```yaml
+type: CodeExecution
+id: analyze-data
+props:
+  language: python
+  packages:  # Optional: Python packages to install
+    - pandas
+  code: |
+    users = getBB('users')
+    setBB('userCount', len(users))
+    setBB('domains', list(set(u['email'].split('@')[1] for u in users)))
+```
+
+**Available Functions:**
+- `getBB(key)` - Read value from blackboard
+- `setBB(key, value)` - Write value to blackboard
+- `getInput(key)` - Read workflow input (read-only)
+- `console.log(...)` / `print(...)` - Debug logging
+
+**Note:** CodeExecution runs in an isolated microVM (Microsandbox) with no network
+access and no cloud credentials. Requires the `executeCode` activity to be configured.
 
 ---
 
@@ -412,14 +433,15 @@ props:
   message: "Processing ${bb.currentItem} for user ${bb.userId}"
 ```
 
-For Script node, use `$bb.key` directly in JavaScript:
+For CodeExecution node, use getter/setter functions:
 
 ```yaml
-type: Script
+type: CodeExecution
 props:
+  language: javascript
   code: |
-    const user = $bb.userId;
-    $bb.greeting = `Hello, ${user}!`;
+    const user = getBB('userId');
+    setBB('greeting', 'Hello, ' + user + '!');
 ```
 
 ---

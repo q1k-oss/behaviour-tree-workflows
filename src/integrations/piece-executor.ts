@@ -8,27 +8,10 @@
  * @see https://activepieces.com/docs
  */
 
-/**
- * Authentication credentials for a piece
- */
-export type PieceAuth =
-  | { access_token: string; refresh_token?: string }
-  | { api_key: string }
-  | Record<string, unknown>;
+import type { PieceActivityRequest, PieceAuth } from "../types.js";
 
-/**
- * Request to execute a piece action
- */
-export interface PieceActionRequest {
-  /** Provider name (maps to @activepieces/piece-{name}) */
-  provider: string;
-  /** Action name within the piece */
-  action: string;
-  /** Input properties for the action */
-  inputs: Record<string, unknown>;
-  /** Authentication credentials */
-  auth: PieceAuth;
-}
+// Re-export types for backward compatibility
+export type { PieceAuth, PieceActivityRequest as PieceActionRequest } from "../types.js";
 
 /**
  * Mapping from provider names to Active Pieces package names
@@ -177,7 +160,7 @@ async function loadPiece(packageName: string): Promise<unknown> {
  * ```
  */
 export async function executePieceAction(
-  request: PieceActionRequest
+  request: PieceActivityRequest
 ): Promise<unknown> {
   const { provider, action, inputs, auth } = request;
 

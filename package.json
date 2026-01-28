@@ -19,7 +19,6 @@
     "@activepieces/pieces-framework": "^0.23.0",
     "@temporalio/activity": "^1.10.0",
     "@temporalio/workflow": "^1.10.0",
-    "isolated-vm": "^5.0.1",
     "js-yaml": "^4.1.1",
     "zod": "^4.2.1"
   },
