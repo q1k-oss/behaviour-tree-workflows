@@ -18,3 +18,6 @@ export { HttpRequest, type HttpRequestConfig } from "./http-request.js";
 
 // CodeExecution node (Microsandbox-based)
 export { CodeExecution, type CodeExecutionConfig } from "./code-execution.js";
+
+// Human-in-the-loop node
+export { WaitForApproval, type WaitForApprovalConfig } from "./wait-for-approval.js";

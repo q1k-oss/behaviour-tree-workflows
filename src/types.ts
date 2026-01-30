@@ -123,6 +123,12 @@ export interface BtreeActivities {
 
   /** Check if file exists in storage */
   fileExists?: (request: FileExistsRequest) => Promise<FileExistsResult>;
+
+  /** Create approval request and return ID/URL */
+  createApproval?: (request: CreateApprovalRequest) => Promise<CreateApprovalResponse>;
+
+  /** Wait for approval signal (uses Temporal condition) */
+  waitForApproval?: (request: WaitForApprovalRequest) => Promise<WaitForApprovalResponse>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -343,6 +349,68 @@ export interface CodeExecutionResult {
   logs: string[];
   /** Total execution time in milliseconds */
   executionTimeMs: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Approval Activity Types (Human-in-the-Loop)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Request to create an approval request in database
+ */
+export interface CreateApprovalRequest {
+  /** Node ID that initiated approval */
+  nodeId: string;
+  /** Email of person who can approve */
+  approverEmail: string;
+  /** Optional role requirement */
+  approverRole?: string;
+  /** Approval title/subject */
+  title: string;
+  /** Detailed description */
+  description?: string;
+  /** Additional metadata */
+  metadata?: Record<string, unknown>;
+  /** Timeout in milliseconds */
+  timeoutMs: number;
+  /** Workflow ID for association */
+  workflowId?: string;
+}
+
+/**
+ * Response from creating approval request
+ */
+export interface CreateApprovalResponse {
+  /** Generated approval ID */
+  approvalId: string;
+  /** URL for approval UI */
+  approvalUrl: string;
+}
+
+/**
+ * Request to wait for approval (used in workflow)
+ */
+export interface WaitForApprovalRequest {
+  /** Node ID to match against signal */
+  nodeId: string;
+  /** Timeout in milliseconds */
+  timeoutMs: number;
+  /** Behavior on timeout */
+  onTimeout: "approve" | "reject";
+}
+
+/**
+ * Response from approval (either via signal or timeout)
+ */
+export interface WaitForApprovalResponse {
+  /** Whether approved or rejected */
+  approved: boolean;
+  /** User ID who approved/rejected */
+  approverId?: string;
+  /** Optional comments from approver */
+  comments?: string;
+  /** When response was received */
+  respondedAt: string;
 }
 
 /**

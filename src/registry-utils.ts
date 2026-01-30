@@ -55,6 +55,7 @@ import { ParseFile } from "./actions/parse-file.js";
 import { GenerateFile } from "./actions/generate-file.js";
 import { HttpRequest } from "./actions/http-request.js";
 import { CodeExecution } from "./actions/code-execution.js";
+import { WaitForApproval } from "./actions/wait-for-approval.js";
 
 /**
  * Register all standard built-in nodes to a registry
@@ -144,4 +145,8 @@ export function registerStandardNodes(registry: Registry): void {
   registry.register("GenerateFile", GenerateFile as any, { category: "action" });
   registry.register("HttpRequest", HttpRequest as any, { category: "action" });
   registry.register("CodeExecution", CodeExecution as any, { category: "action" });
+  registry.register("WaitForApproval", WaitForApproval as any, {
+    category: "action",
+    description: "Pause workflow until human approval"
+  });
 }
