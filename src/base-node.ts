@@ -182,6 +182,22 @@ export abstract class ActionNode extends BaseNode {
       const status = await this.executeTick(context);
       this._status = status;
 
+      // If node returned FAILURE with an error message, emit ERROR event
+      // This captures errors that were caught internally by the node
+      if (status === NodeStatus.FAILURE && this._lastError) {
+        context.eventEmitter?.emit({
+          type: NodeEventType.ERROR,
+          nodeId: this.id,
+          nodeName: this.name,
+          nodeType: this.type,
+          timestamp: Date.now(),
+          data: {
+            error: { message: this._lastError },
+            blackboard: context.blackboard?.toJSON?.() ?? {},
+          },
+        });
+      }
+
       // Emit TICK_END event with status
       context.eventEmitter?.emit({
         type: NodeEventType.TICK_END,
@@ -280,6 +296,22 @@ export abstract class ConditionNode extends BaseNode {
       // Execute the actual node logic
       const status = await this.executeTick(context);
       this._status = status;
+
+      // If node returned FAILURE with an error message, emit ERROR event
+      // This captures errors that were caught internally by the node
+      if (status === NodeStatus.FAILURE && this._lastError) {
+        context.eventEmitter?.emit({
+          type: NodeEventType.ERROR,
+          nodeId: this.id,
+          nodeName: this.name,
+          nodeType: this.type,
+          timestamp: Date.now(),
+          data: {
+            error: { message: this._lastError },
+            blackboard: context.blackboard?.toJSON?.() ?? {},
+          },
+        });
+      }
 
       // Emit TICK_END event with status
       context.eventEmitter?.emit({

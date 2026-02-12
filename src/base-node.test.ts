@@ -403,7 +403,7 @@ describe("Error handling in tick()", () => {
     expect(errorEvents.length).toBe(1);
     expect(errorEvents[0].nodeId).toBe("test-id");
     expect(errorEvents[0].nodeName).toBe("test-name");
-    expect(errorEvents[0].data.error).toBe("Test error");
+    expect(errorEvents[0].data.error.message).toBe("Test error");
   });
 
   it("should emit TICK_END with FAILURE status on error", async () => {
@@ -462,7 +462,7 @@ describe("Error handling in tick()", () => {
     }
 
     expect(errorEvents.length).toBe(1);
-    expect(errorEvents[0].data.error).toBe("Test cancellation");
+    expect(errorEvents[0].data.error.message).toBe("Test cancellation");
   });
 
   it("should re-propagate ConfigurationError", async () => {
@@ -504,7 +504,7 @@ describe("Error handling in tick()", () => {
     }
 
     expect(errorEvents.length).toBe(1);
-    expect(errorEvents[0].data.error).toBe(
+    expect(errorEvents[0].data.error.message).toBe(
       "Test is broken - missing element",
     );
   });
