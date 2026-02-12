@@ -260,7 +260,8 @@ describe("Event Integration with Nodes", () => {
       expect(events.length).toBe(1);
       expect(events[0].type).toBe(NodeEventType.ERROR);
       expect(events[0].nodeId).toBe("throwing");
-      expect(events[0].data).toEqual({ error: "Test error" });
+      expect(events[0].data.error.message).toBe("Test error");
+      expect(events[0].data.blackboard).toEqual({});
     });
   });
 
