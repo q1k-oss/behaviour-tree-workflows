@@ -1,0 +1,27 @@
+# Source & tests
+src/
+*.test.ts
+*.spec.ts
+
+# Docs & examples
+docs/
+examples/
+templates/
+workflows/
+
+# Landing page
+behaviour-tree-workflows-landing/
+
+# Demo files
+demo-*.ts
+
+# Config files
+tsconfig.json
+vitest.config.ts
+CLAUDE.md
+.claude/
+
+# Dev/build artifacts
+coverage/
+*.tgz
+.DS_Store

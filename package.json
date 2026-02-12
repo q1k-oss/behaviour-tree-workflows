@@ -1,10 +1,40 @@
 {
-  "name": "@wayfarer-ai/btree-workflows",
-  "version": "0.0.1",
+  "name": "@q1k-oss/btree-workflows",
+  "version": "0.0.2",
+  "description": "Behavior tree library for TypeScript — 30+ production-ready nodes, YAML workflows, Temporal integration, and built-in observability",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "behavior-tree",
+    "btree",
+    "workflow",
+    "yaml",
+    "temporal",
+    "ai",
+    "orchestration"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/q1k-oss/btree-workflows"
+  },
   "scripts": {
     "clean": "rm -rf dist",
     "dev": "tsup-node src/index.ts --watch --format cjs,esm --dts",

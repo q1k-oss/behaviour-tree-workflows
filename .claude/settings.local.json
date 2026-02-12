@@ -18,7 +18,15 @@
       "Bash(npx tsx client.ts)",
       "Bash(mkdir:*)",
       "Bash(cat:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "WebFetch(domain:mint.q1k.ai)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(npx vite build:*)",
+      "Bash(npm whoami:*)",
+      "Bash(npm org:*)",
+      "Bash(npm publish:*)",
+      "Bash(npm pack:*)"
     ]
   }
 }
