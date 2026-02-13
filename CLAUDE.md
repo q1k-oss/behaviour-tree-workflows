@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-@wayfarer-ai/btree-workflows is a behavior tree library for TypeScript, designed for AI-native workflows. It provides 30+ production-ready nodes, YAML workflow definitions, native Temporal integration for durable execution, and built-in observability.
+@wayfarer-ai/btree-workflows is a behavior tree library for TypeScript, designed for AI-native workflows. It provides 39 production-ready nodes, YAML workflow definitions, native Temporal integration for durable execution, and built-in observability.
 
 ## Commands
 
@@ -15,7 +15,7 @@ npm run build            # Production build (CJS + ESM + types)
 npm run typecheck        # TypeScript type checking
 npm run clean            # Remove dist/
 
-# Testing (534+ tests, 89%+ coverage)
+# Testing (650+ tests, 89%+ coverage)
 npm test                 # Run all tests with coverage (CI=true)
 npm run test:watch       # Watch mode
 npm run test:ui          # Vitest UI
@@ -26,7 +26,7 @@ npm run test:ui          # Vitest UI
 ### Core Concepts
 - **NodeStatus**: `SUCCESS | FAILURE | RUNNING | IDLE` - every tick returns a status
 - **ScopedBlackboard**: Hierarchical key-value store with scope inheritance
-- **TickEngine**: Executes tree via tick loop with auto exponential backoff
+- **BehaviorTree**: Wrapper with path-based indexing and `toWorkflow()` for Temporal
 - **Registry**: Factory for creating nodes from YAML/JSON definitions
 - **ExecutionTracker**: Aggregates events into queryable state (progress, errors, timeline)
 
@@ -35,7 +35,10 @@ npm run test:ui          # Vitest UI
 |----------|-------|----------|
 | Composites | 10 | Sequence, Selector, Parallel, ForEach, While, Conditional, Recovery |
 | Decorators | 10 | Timeout, Delay, Repeat, Invert, ForceSuccess, RunOnce, Precondition |
-| Actions | 9 | PrintAction, CodeExecution, LogMessage, HttpRequest, GenerateFile |
+| Actions | 7 | CodeExecution, HttpRequest, ParseFile, GenerateFile, PythonScript, LLMChat, BrowserAgent |
+| Test/Example | 9 | PrintAction, MockAction, SuccessNode, FailureNode, WaitAction |
+| Utilities | 2 | LogMessage, RegexExtract |
+| Integrations | 1 | IntegrationAction (Active Pieces) |
 
 ### Directory Structure
 ```
@@ -43,15 +46,29 @@ src/
 ├── base-node.ts          # BaseNode abstract class
 ├── behavior-tree.ts      # BehaviorTree wrapper with toWorkflow()
 ├── blackboard.ts         # ScopedBlackboard implementation
-├── tick-engine.ts        # TickEngine with snapshot support
 ├── registry.ts           # Node registry + YAML loading
 ├── events.ts             # NodeEventEmitter for lifecycle events
+├── test-nodes.ts         # Test/example nodes (PrintAction, MockAction, etc.)
 ├── composites/           # Composite nodes (Sequence, Parallel, etc.)
 ├── decorators/           # Decorator nodes (Timeout, Repeat, etc.)
 ├── actions/              # Activity-based action nodes
 │   ├── code-execution.ts # CodeExecution (JS/Python via Microsandbox)
 │   ├── http-request.ts   # HttpRequest (REST API calls)
-│   └── generate-file.ts  # GenerateFile (CSV/JSON export)
+│   ├── parse-file.ts     # ParseFile (CSV/JSON parsing)
+│   ├── generate-file.ts  # GenerateFile (CSV/JSON export)
+│   ├── python-script.ts  # PythonScript (Python execution)
+│   ├── llm-chat.ts       # LLMChat (multi-provider LLM chat)
+│   └── browser-agent.ts  # BrowserAgent (Browserbase + Stagehand)
+├── utilities/            # Utility nodes
+│   ├── log-message.ts    # LogMessage node
+│   ├── regex-extract.ts  # RegexExtract node
+│   └── variable-resolver.ts  # Variable resolution utilities
+├── debug/                # Debug nodes
+│   ├── breakpoint.ts     # Breakpoint node
+│   └── resume-point.ts   # ResumePoint node
+├── integrations/         # External integrations
+│   └── integration-action.ts  # Active Pieces integration
+├── templates/            # Template loading utilities
 ├── data-store/           # DataStore for large payloads
 ├── observability/        # Execution tracking and error capture
 │   ├── types.ts          # ExecutionProgress, StructuredError, TimelineEntry
@@ -59,7 +76,7 @@ src/
 │   └── sinks.ts          # Temporal workflow sink types
 ├── schemas/              # Zod schemas for node props
 ├── yaml/                 # YAML loading + validation
-└── utils/                # Shared utilities
+└── utils/                # Shared utilities (error-handler, signal-check)
 ```
 
 ### YAML Workflows
@@ -67,7 +84,7 @@ src/
 import { Registry, registerStandardNodes, loadTreeFromYaml } from '@wayfarer-ai/btree';
 
 const registry = new Registry();
-registerStandardNodes(registry);  // Registers all 32 built-in nodes
+registerStandardNodes(registry);  // Registers all 39 built-in nodes
 
 const tree = loadTreeFromYaml(`
 type: Sequence
@@ -79,7 +96,9 @@ children:
       message: "Hello from YAML!"
 `, registry);
 
-await tree.execute();
+// Convert to Temporal workflow and execute
+const workflow = tree.toWorkflow();
+const result = await workflow({ input: {} });
 ```
 
 ### Temporal Integration
@@ -139,15 +158,6 @@ catch (error) {
   this._lastError = `Verification failed: expected "${expected}": ${error.message}`;
   return NodeStatus.FAILURE;
 }
-```
-
-### Execution Snapshots
-```typescript
-const engine = new TickEngine(tree, { captureSnapshots: true });
-await engine.tick(blackboard);
-
-const snapshots = engine.getSnapshots();  // Only captured when state changes
-engine.clearSnapshots();  // Always clear to prevent memory growth
 ```
 
 ### Observability

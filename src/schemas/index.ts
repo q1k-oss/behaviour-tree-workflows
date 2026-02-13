@@ -32,6 +32,10 @@ import { reactiveSequenceConfigurationSchema } from "../composites/reactive-sequ
 import { memorySequenceConfigurationSchema } from "../composites/memory-sequence.schema.js";
 import { recoveryConfigurationSchema } from "../composites/recovery.schema.js";
 
+// AI-native action schemas
+import { llmChatSchema } from "../actions/llm-chat.schema.js";
+import { browserAgentSchema } from "../actions/browser-agent.schema.js";
+
 // Action schemas - Script removed, use CodeExecution instead
 
 /**
@@ -93,6 +97,10 @@ export class SchemaRegistry {
     this.register("ReactiveSequence", reactiveSequenceConfigurationSchema);
     this.register("MemorySequence", memorySequenceConfigurationSchema);
     this.register("Recovery", recoveryConfigurationSchema);
+
+    // AI-native action schemas
+    this.register("LLMChat", llmChatSchema);
+    this.register("BrowserAgent", browserAgentSchema);
 
     // Action schemas - Script removed, use CodeExecution instead
   }

@@ -123,6 +123,12 @@ export interface BtreeActivities {
 
   /** Check if file exists in storage */
   fileExists?: (request: FileExistsRequest) => Promise<FileExistsResult>;
+
+  /** Execute LLM chat completion */
+  llmChat?: (request: LLMChatRequest) => Promise<LLMChatResult>;
+
+  /** Execute autonomous browser agent via Browserbase + Stagehand */
+  browserAgent?: (request: BrowserAgentRequest) => Promise<BrowserAgentResult>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -342,6 +348,149 @@ export interface CodeExecutionResult {
   /** Console/stdout output from execution */
   logs: string[];
   /** Total execution time in milliseconds */
+  executionTimeMs: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LLM Chat Activity Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Supported LLM providers
+ */
+export type LLMProvider = "anthropic" | "openai" | "google" | "ollama";
+
+/**
+ * Message role in conversation
+ */
+export type MessageRole = "system" | "user" | "assistant";
+
+/**
+ * Single message in a conversation
+ */
+export interface LLMMessage {
+  role: MessageRole;
+  content: string;
+}
+
+/**
+ * Request for LLM chat completion
+ */
+export interface LLMChatRequest {
+  /** LLM provider to use */
+  provider: LLMProvider;
+  /** Model identifier (e.g., "claude-sonnet-4-20250514", "gpt-4", "gemini-pro") */
+  model: string;
+  /** Conversation messages */
+  messages: LLMMessage[];
+  /** Optional system prompt (prepended as system message) */
+  systemPrompt?: string;
+  /** Sampling temperature (0-2, default: 1) */
+  temperature?: number;
+  /** Maximum tokens to generate */
+  maxTokens?: number;
+  /** Response format: "text" or "json" */
+  responseFormat?: "text" | "json";
+  /** JSON schema for structured output (when responseFormat is "json") */
+  jsonSchema?: Record<string, unknown>;
+  /** Request timeout in milliseconds */
+  timeout?: number;
+  /** Ollama-specific: base URL for local instance */
+  baseUrl?: string;
+}
+
+/**
+ * Result from LLM chat completion
+ */
+export interface LLMChatResult {
+  /** Generated response content */
+  content: string;
+  /** Parsed JSON if responseFormat was "json" */
+  parsed?: unknown;
+  /** Token usage statistics */
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  /** Model used for completion */
+  model: string;
+  /** Finish reason */
+  finishReason: "stop" | "length" | "content_filter" | "tool_calls" | "error";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Browser Agent Activity Types (Browserbase + Stagehand)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Request for autonomous browser agent execution
+ */
+export interface BrowserAgentRequest {
+  /** Goal/instruction for the agent to achieve */
+  goal: string;
+  /** Starting URL (optional - agent may navigate) */
+  startUrl?: string;
+
+  // Browserbase Context (for persistence across sessions)
+  /** Context ID for persisting cookies/auth/cache (server-side) */
+  contextId?: string;
+  /** Whether to persist context changes (default: false) */
+  persistContext?: boolean;
+
+  // Session options
+  /** Timeout for entire agent execution (ms) */
+  timeout?: number;
+  /** Max steps/actions the agent can take */
+  maxSteps?: number;
+
+  // LLM config for Stagehand
+  /** LLM provider for agent reasoning */
+  llmProvider?: LLMProvider;
+  /** LLM model for agent reasoning */
+  llmModel?: string;
+}
+
+/**
+ * Result from browser agent execution
+ */
+export interface BrowserAgentResult {
+  /** Whether the agent achieved the goal (from Stagehand) */
+  success: boolean;
+  /** Whether execution completed (false if hit maxSteps limit) */
+  completed: boolean;
+  /** Human-readable summary of what was accomplished */
+  message: string;
+
+  // Execution log for debugging (from Stagehand actions array)
+  actions: Array<{
+    type: string; // "ariaTree" | "act" | "extract" | "close" | etc.
+    reasoning?: string;
+    taskCompleted: boolean;
+    pageUrl: string;
+    timestamp: number;
+  }>;
+
+  // Token usage from Stagehand
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    reasoningTokens: number;
+  };
+
+  // Session info for audit (from Browserbase)
+  /** Browserbase session ID */
+  sessionId: string;
+  /** URL to view session recording */
+  debugUrl: string;
+  /** Final URL after agent execution */
+  finalUrl: string;
+
+  // Context for continuation
+  /** Context ID (for use in subsequent calls) */
+  contextId?: string;
+
+  // Metrics
   executionTimeMs: number;
 }
 
