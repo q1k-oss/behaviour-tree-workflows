@@ -1,5 +1,5 @@
 """
-Python Activity Implementations for btree workflows
+Python Activity Implementations for behaviour-tree workflows
 
 These activities handle data processing operations that benefit from Python's
 superior data libraries (pandas, openpyxl, rapidfuzz).

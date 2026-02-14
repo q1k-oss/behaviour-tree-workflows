@@ -1,5 +1,5 @@
 /**
- * btree - Core behavior tree implementation
+ * behaviour-tree - Core behavior tree implementation
  * Inspired by BehaviorTree.CPP
  */
 

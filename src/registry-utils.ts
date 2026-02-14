@@ -66,7 +66,7 @@ import { BrowserAgent } from "./actions/browser-agent.js";
  *
  * @example
  * ```typescript
- * import { Registry, registerStandardNodes } from '@wayfarer-ai/btree';
+ * import { Registry, registerStandardNodes } from '@q1k-oss/behaviour-tree-workflows';
  *
  * const registry = new Registry();
  * registerStandardNodes(registry);

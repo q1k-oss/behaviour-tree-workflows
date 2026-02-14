@@ -1,6 +1,6 @@
-# btree Documentation
+# behaviour-tree Documentation
 
-Documentation for the @wayfarer-ai/btree-workflows library.
+Documentation for the @q1k-oss/behaviour-tree-workflows library.
 
 ## Contents
 
@@ -20,7 +20,7 @@ import {
   registerStandardNodes,
   loadTreeFromYaml,
   BehaviorTree,
-} from '@wayfarer-ai/btree';
+} from '@q1k-oss/behaviour-tree-workflows';
 
 // Setup registry
 const registry = new Registry();
@@ -49,5 +49,5 @@ const result = await bt.execute();
 
 ## Related
 
-- [q1k-controlplane](https://github.com/wayfarer-ai/q1k-controlplane) - Application using btree
+- [q1k-controlplane](https://github.com/q1k-oss/q1k-controlplane) - Application using behaviour-tree
 - [Temporal.io](https://temporal.io) - Durable execution runtime

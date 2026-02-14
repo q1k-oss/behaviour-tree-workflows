@@ -90,7 +90,7 @@ export interface TemporalContext extends TickContext {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Activity capabilities that can be provided to btree
+ * Activity capabilities that can be provided to behaviour-tree
  * Controlplane creates these via proxyActivities() and passes to context
  */
 export interface BtreeActivities {

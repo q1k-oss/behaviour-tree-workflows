@@ -1,5 +1,5 @@
 {
-  "name": "@q1k-oss/btree-workflows",
+  "name": "@q1k-oss/behaviour-tree-workflows",
   "version": "0.0.2",
   "description": "Behavior tree library for TypeScript — 30+ production-ready nodes, YAML workflows, Temporal integration, and built-in observability",
   "type": "module",
@@ -23,7 +23,7 @@
   ],
   "keywords": [
     "behavior-tree",
-    "btree",
+    "behaviour-tree",
     "workflow",
     "yaml",
     "temporal",
@@ -33,7 +33,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/q1k-oss/btree-workflows"
+    "url": "https://github.com/q1k-oss/behaviour-tree-workflows"
   },
   "scripts": {
     "clean": "rm -rf dist",

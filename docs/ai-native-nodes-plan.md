@@ -1,6 +1,6 @@
 # AI-Native Nodes Implementation Plan
 
-This document outlines the implementation plan for adding AI-native nodes to @wayfarer-ai/btree-workflows.
+This document outlines the implementation plan for adding AI-native nodes to @q1k-oss/behaviour-tree-workflows.
 
 ## Overview
 

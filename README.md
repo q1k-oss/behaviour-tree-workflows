@@ -1,4 +1,4 @@
-# @q1k-oss/btree-workflows
+# @q1k-oss/behaviour-tree-workflows
 
 Core behavior tree implementation for TypeScript, designed for AI-native workflows.
 
@@ -15,7 +15,7 @@ Core behavior tree implementation for TypeScript, designed for AI-native workflo
 ## Installation
 
 ```bash
-npm install @q1k-oss/btree
+npm install @q1k-oss/behaviour-tree
 ```
 
 ## Quick Start
@@ -28,7 +28,7 @@ import {
   PrintAction,
   ScopedBlackboard,
   TickEngine
-} from '@q1k-oss/btree';
+} from '@q1k-oss/behaviour-tree-workflows';
 
 // Create a behavior tree
 const sequence = new Sequence({ id: 'main' });
@@ -46,7 +46,7 @@ await engine.tick(blackboard);
 ### YAML Workflows (Recommended)
 
 ```typescript
-import { Registry, registerStandardNodes, loadTreeFromYaml } from '@q1k-oss/btree';
+import { Registry, registerStandardNodes, loadTreeFromYaml } from '@q1k-oss/behaviour-tree-workflows';
 
 // Setup registry with all built-in nodes
 const registry = new Registry();
@@ -119,7 +119,7 @@ import {
   registerStandardNodes,
   loadTreeFromYaml,
   loadTreeFromFile
-} from '@q1k-oss/btree';
+} from '@q1k-oss/behaviour-tree-workflows';
 
 // Setup registry with all 32 built-in nodes
 const registry = new Registry();
@@ -164,7 +164,7 @@ YAML workflows undergo comprehensive validation before execution:
 4. **Semantic Rules** - Checks ID uniqueness, child counts, circular references
 
 ```typescript
-import { validateYaml } from '@q1k-oss/btree';
+import { validateYaml } from '@q1k-oss/behaviour-tree-workflows';
 
 // Validate without executing
 const result = validateYaml(yamlString, registry);
@@ -379,7 +379,7 @@ The **Script node** provides built-in functions to load test data and environmen
 Access test parameters from CSV files, data tables, or test runs:
 
 ```typescript
-import { Script } from '@q1k-oss/btree';
+import { Script } from '@q1k-oss/behaviour-tree-workflows';
 
 // Setup test data
 const context = {
@@ -498,7 +498,7 @@ import {
   loadTreeFromYaml,
   type WorkflowArgs,
   type WorkflowResult,
-} from '@q1k-oss/btree';
+} from '@q1k-oss/behaviour-tree-workflows';
 
 export interface YamlWorkflowArgs extends WorkflowArgs {
   yamlContent: string;
@@ -529,7 +529,7 @@ const yamlContent = readFileSync('./workflows/order-processing.yaml', 'utf-8');
 
 // Execute as Temporal workflow
 const result = await client.workflow.execute('yamlWorkflow', {
-  taskQueue: 'btree-workflows',
+  taskQueue: 'behaviour-tree-workflows',
   workflowId: `order-${Date.now()}`,
   args: [{
     input: {},
@@ -570,8 +570,8 @@ children:
 #### Programmatic Workflows
 
 ```typescript
-import { BehaviorTree, Sequence, PrintAction } from '@q1k-oss/btree';
-import type { WorkflowArgs, WorkflowResult } from '@q1k-oss/btree';
+import { BehaviorTree, Sequence, PrintAction } from '@q1k-oss/behaviour-tree-workflows';
+import type { WorkflowArgs, WorkflowResult } from '@q1k-oss/behaviour-tree-workflows';
 
 export async function myWorkflow(args: WorkflowArgs): Promise<WorkflowResult> {
   const root = new Sequence({ id: 'root' });
@@ -599,7 +599,7 @@ See [`examples/temporal/`](./examples/temporal/) and [`examples/yaml-workflows/`
 Subscribe to node lifecycle events for real-time monitoring and observability:
 
 ```typescript
-import { NodeEventEmitter } from '@q1k-oss/btree';
+import { NodeEventEmitter } from '@q1k-oss/behaviour-tree-workflows';
 
 const eventEmitter = new NodeEventEmitter();
 
@@ -822,8 +822,8 @@ src/
 1. **Create node file** in `src/composites/` or `src/decorators/`
 2. **Extend base class**:
    ```typescript
-   import { CompositeNode } from '@q1k-oss/btree';
-   import { TemporalContext, NodeStatus } from '@q1k-oss/btree';
+   import { CompositeNode } from '@q1k-oss/behaviour-tree-workflows';
+   import { TemporalContext, NodeStatus } from '@q1k-oss/behaviour-tree-workflows';
 
    export class MyNode extends CompositeNode {
      protected async executeTick(context: TemporalContext): Promise<NodeStatus> {

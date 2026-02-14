@@ -119,7 +119,7 @@ npx tsx client.ts
 
 ```typescript
 import { readFileSync } from 'fs';
-import { loadTreeFromYaml, Registry, registerStandardNodes } from '@wayfarer-ai/btree';
+import { loadTreeFromYaml, Registry, registerStandardNodes } from '@q1k-oss/behaviour-tree-workflows';
 
 // Setup registry with all built-in nodes
 const registry = new Registry();
@@ -145,7 +145,7 @@ import { yamlWorkflow } from './yaml-workflow-loader.js';
 const yamlContent = readFileSync('./workflow.yaml', 'utf-8');
 
 const result = await client.workflow.execute("yamlWorkflow", {
-  taskQueue: "btree-workflows",
+  taskQueue: "behaviour-tree-workflows",
   workflowId: `my-workflow-${Date.now()}`,
   args: [{
     input: {},
@@ -184,7 +184,7 @@ The `registerStandardNodes()` utility automatically registers all built-in nodes
 ### Adding Custom Nodes
 
 ```typescript
-import { Registry, registerStandardNodes } from "@wayfarer-ai/btree";
+import { Registry, registerStandardNodes } from "@q1k-oss/behaviour-tree";
 import { MyCustomNode } from "./my-nodes.js";
 
 const registry = new Registry();

@@ -24,7 +24,7 @@ async function run() {
   console.log("📦 Bundling workflows...");
   const { code } = await bundleWorkflowCode({
     workflowsPath: join(__dirname, "workflows.ts"),
-    // Ignore modules that are used by btree but not needed in workflow context
+    // Ignore modules that are used by behaviour-tree but not needed in workflow context
     // Note: 'vm' is used by js-interpreter but not at runtime in the workflow
     ignoreModules: ["fs", "fs/promises", "path", "vm"],
     webpackConfigHook: (config) => {
@@ -49,12 +49,12 @@ async function run() {
     connection,
     namespace: "default",
     workflowBundle: { code },
-    taskQueue: "btree-workflows",
+    taskQueue: "behaviour-tree-workflows",
     activities, // Register activity implementations
   });
 
   console.log("✅ Worker started successfully!");
-  console.log("📋 Task Queue: btree-workflows");
+  console.log("📋 Task Queue: behaviour-tree-workflows");
   console.log("🔄 Listening for workflow tasks...\n");
 
   await worker.run();

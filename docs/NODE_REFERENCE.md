@@ -1,6 +1,6 @@
 # BTree Node Reference
 
-Quick reference for all available nodes in the btree library.
+Quick reference for all available nodes in the behaviour-tree library.
 
 ---
 

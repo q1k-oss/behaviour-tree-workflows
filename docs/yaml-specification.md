@@ -1,6 +1,6 @@
 # YAML Workflow Specification
 
-This document provides a comprehensive reference for defining behavior tree workflows using YAML in btree.
+This document provides a comprehensive reference for defining behavior tree workflows using YAML in behaviour-tree.
 
 ## Table of Contents
 
@@ -771,7 +771,7 @@ import {
   registerStandardNodes,
   loadTreeFromYaml,
   loadTreeFromFile
-} from '@wayfarer-ai/btree';
+} from '@q1k-oss/behaviour-tree-workflows';
 
 // Setup registry with all 32 built-in nodes
 const registry = new Registry();
@@ -808,7 +808,7 @@ const result = await tree.execute();
 ### Validation Without Execution
 
 ```typescript
-import { validateYaml } from 'btree';
+import { validateYaml } from 'behaviour-tree';
 
 const result = validateYaml(yamlString, registry);
 
@@ -825,7 +825,7 @@ if (!result.valid) {
 ### Loading Options
 
 ```typescript
-import { loadTreeFromYaml } from 'btree';
+import { loadTreeFromYaml } from 'behaviour-tree';
 
 const tree = loadTreeFromYaml(yamlString, registry, {
   validate: true,           // Enable validation (default: true)
@@ -837,7 +837,7 @@ const tree = loadTreeFromYaml(yamlString, registry, {
 ### Validation Options
 
 ```typescript
-import { validateYaml } from 'btree';
+import { validateYaml } from 'behaviour-tree';
 
 const result = validateYaml(yamlString, registry, {
   collectAllErrors: true,   // Collect all errors (default: false)

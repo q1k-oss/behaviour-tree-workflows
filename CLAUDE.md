@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-@wayfarer-ai/btree-workflows is a behavior tree library for TypeScript, designed for AI-native workflows. It provides 39 production-ready nodes, YAML workflow definitions, native Temporal integration for durable execution, and built-in observability.
+@q1k-oss/behaviour-tree-workflows is a behavior tree library for TypeScript, designed for AI-native workflows. It provides 39 production-ready nodes, YAML workflow definitions, native Temporal integration for durable execution, and built-in observability.
 
 ## Commands
 
@@ -81,7 +81,7 @@ src/
 
 ### YAML Workflows
 ```typescript
-import { Registry, registerStandardNodes, loadTreeFromYaml } from '@wayfarer-ai/btree';
+import { Registry, registerStandardNodes, loadTreeFromYaml } from '@q1k-oss/behaviour-tree-workflows';
 
 const registry = new Registry();
 registerStandardNodes(registry);  // Registers all 39 built-in nodes
@@ -103,7 +103,7 @@ const result = await workflow({ input: {} });
 
 ### Temporal Integration
 ```typescript
-import { BehaviorTree, Sequence, PrintAction } from '@wayfarer-ai/btree';
+import { BehaviorTree, Sequence, PrintAction } from '@q1k-oss/behaviour-tree-workflows';
 
 export async function myWorkflow(args: WorkflowArgs): Promise<WorkflowResult> {
   const root = new Sequence({ id: 'root' });
@@ -164,7 +164,7 @@ catch (error) {
 The library includes an observability module for tracking execution:
 
 ```typescript
-import { ExecutionTracker, NodeEventEmitter } from '@wayfarer-ai/btree';
+import { ExecutionTracker, NodeEventEmitter } from '@q1k-oss/behaviour-tree-workflows';
 
 const tracker = new ExecutionTracker(totalNodes);
 const eventEmitter = new NodeEventEmitter();
