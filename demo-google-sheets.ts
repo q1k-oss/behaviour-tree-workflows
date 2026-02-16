@@ -1,5 +1,5 @@
 /**
- * Demo: Google Sheets Integration with btree
+ * Demo: Google Sheets Integration with behaviour-tree
  *
  * This demo shows how to use the IntegrationAction node to interact
  * with Google Sheets via Active Pieces.

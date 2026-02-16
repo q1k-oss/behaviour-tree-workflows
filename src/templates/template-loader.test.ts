@@ -24,7 +24,7 @@ describe("Template Loader", () => {
     registerStandardNodes(registry);
 
     // Create temp directory for test templates
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "btree-templates-"));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "behaviour-tree-templates-"));
   });
 
   afterEach(() => {

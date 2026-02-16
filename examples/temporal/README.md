@@ -1,6 +1,6 @@
 # Temporal Activity Test
 
-This directory contains examples for running btree workflows with Temporal, including activity execution for I/O operations.
+This directory contains examples for running behaviour-tree workflows with Temporal, including activity execution for I/O operations.
 
 ## Prerequisites
 
@@ -14,9 +14,9 @@ This directory contains examples for running btree workflows with Temporal, incl
    docker-compose up -d
    ```
 
-2. **Build btree** - The dist folder must be built
+2. **Build behaviour-tree** - The dist folder must be built
    ```bash
-   cd /path/to/btree
+   cd /path/to/behaviour-tree
    npm run build
    ```
 
@@ -25,7 +25,7 @@ This directory contains examples for running btree workflows with Temporal, incl
 ### 1. Start the Worker (Terminal 1)
 
 ```bash
-cd /path/to/btree/examples/temporal
+cd /path/to/behaviour-tree/examples/temporal
 
 # For mock activities (no real API calls)
 BTREE_MOCK_ACTIVITIES=true npx tsx worker.ts
@@ -40,14 +40,14 @@ You should see:
 📦 Bundling workflows...
 ✅ Workflows bundled successfully
 ✅ Worker started successfully!
-📋 Task Queue: btree-workflows
+📋 Task Queue: behaviour-tree-workflows
 🔄 Listening for workflow tasks...
 ```
 
 ### 2. Run the Client (Terminal 2)
 
 ```bash
-cd /path/to/btree/examples/temporal
+cd /path/to/behaviour-tree/examples/temporal
 npx tsx client.ts
 ```
 
@@ -79,7 +79,7 @@ The activity test workflow (`06-activity-test.yaml`) demonstrates:
 | `worker.ts` | Temporal worker that registers workflows and activities |
 | `client.ts` | Client that executes workflows |
 | `activities.ts` | Activity implementations (run outside workflow sandbox) |
-| `yaml-workflow-loader.ts` | Workflow that loads YAML and passes activities to btree |
+| `yaml-workflow-loader.ts` | Workflow that loads YAML and passes activities to behaviour-tree |
 | `workflows.ts` | Re-exports workflows for Temporal bundler |
 
 ## Activity Flow

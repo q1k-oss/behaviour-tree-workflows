@@ -1,8 +1,8 @@
-# btree Architecture Summary
+# behaviour-tree Architecture Summary
 
 ## Overview
 
-btree is a behavior tree library for TypeScript, designed for AI-native workflows with native Temporal integration.
+behaviour-tree is a behavior tree library for TypeScript, designed for AI-native workflows with native Temporal integration.
 
 ---
 

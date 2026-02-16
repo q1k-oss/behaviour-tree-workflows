@@ -158,9 +158,9 @@ export class BehaviorTree {
    *
    * @example
    * ```typescript
-   * import { BehaviorTree } from '@wayfarer-ai/btree';
-   * import { Sequence } from '@wayfarer-ai/btree';
-   * import { PrintAction } from '@wayfarer-ai/btree';
+   * import { BehaviorTree } from '@q1k-oss/behaviour-tree-workflows';
+   * import { Sequence } from '@q1k-oss/behaviour-tree-workflows';
+   * import { PrintAction } from '@q1k-oss/behaviour-tree-workflows';
    *
    * const root = new Sequence({ id: 'root' });
    * root.addChild(new PrintAction({ id: 'step1', message: 'Hello' }));

@@ -102,9 +102,9 @@ children:
 
 ```typescript
 // worker/src/actions/python-interpreter.ts
-import { ActionNode } from '@wayfarer-ai/btree';
+import { ActionNode } from '@q1k-oss/behaviour-tree-workflows';
 import { proxyActivities } from '@temporalio/workflow';
-import type { NodeStatus, TemporalContext } from '@wayfarer-ai/btree';
+import type { NodeStatus, TemporalContext } from '@q1k-oss/behaviour-tree-workflows';
 
 interface InterpreterActivities {
   executePython(
@@ -462,7 +462,7 @@ export default async (fastify: FastifyInstance) => {
       platform: 'node',
       target: 'node18',
       format: 'esm',
-      external: ['@wayfarer-ai/btree', '@temporalio/workflow'],
+      external: ['@q1k-oss/behaviour-tree-workflows', '@temporalio/workflow'],
       write: false,
     });
 
@@ -598,7 +598,7 @@ import {
   Registry,
   registerStandardNodes,
   loadTreeFromYaml,
-} from '@wayfarer-ai/btree';
+} from '@q1k-oss/behaviour-tree-workflows';
 import { CustomNodeLoader } from '../custom-node-loader';
 
 const customNodeLoader = new CustomNodeLoader();
@@ -666,9 +666,9 @@ children:
 
 ```typescript
 // User uploads this TypeScript code
-import { ActionNode } from '@wayfarer-ai/btree';
+import { ActionNode } from '@q1k-oss/behaviour-tree-workflows';
 import { proxyActivities } from '@temporalio/workflow';
-import type { NodeStatus, TemporalContext } from '@wayfarer-ai/btree';
+import type { NodeStatus, TemporalContext } from '@q1k-oss/behaviour-tree-workflows';
 
 interface SlackActivities {
   sendSlackMessage(channel: string, message: string): Promise<void>;
@@ -739,7 +739,7 @@ export default class SendSlackMessage extends ActionNode {
 
 ```bash
 # Install SDK
-npm install -g @wayfarer-ai/workflow-sdk
+npm install -g @q1k-oss/workflow-sdk
 
 # Create new custom node
 workflow-sdk init SendSlackMessage

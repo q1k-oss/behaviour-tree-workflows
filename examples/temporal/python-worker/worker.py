@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Python Worker for btree workflows
+Python Worker for behaviour-tree workflows
 
 This worker handles data processing activities that benefit from Python's
 superior data libraries (pandas, openpyxl, rapidfuzz).
@@ -12,7 +12,7 @@ Usage:
 Environment variables:
     TEMPORAL_HOST: Temporal server host (default: localhost:7233)
     TEMPORAL_NAMESPACE: Temporal namespace (default: default)
-    TASK_QUEUE: Task queue name (default: btree-workflows)
+    TASK_QUEUE: Task queue name (default: behaviour-tree-workflows)
     PERSISTENT_STORAGE: Path for persistent file storage (default: /tmp/persistent)
 """
 
@@ -42,7 +42,7 @@ async def main():
     # Configuration from environment
     temporal_host = os.environ.get("TEMPORAL_HOST", "localhost:7233")
     namespace = os.environ.get("TEMPORAL_NAMESPACE", "default")
-    task_queue = os.environ.get("TASK_QUEUE", "btree-workflows")
+    task_queue = os.environ.get("TASK_QUEUE", "behaviour-tree-workflows")
 
     logger.info(f"Connecting to Temporal at {temporal_host} (namespace: {namespace})")
 
@@ -93,7 +93,7 @@ async def main():
 if __name__ == "__main__":
     print("""
 ╔═══════════════════════════════════════════════════════════════════════════════╗
-║                     btree Python Worker                                        ║
+║                     behaviour-tree Python Worker                                        ║
 ║                                                                                ║
 ║  Activities:                                                                   ║
 ║    - parse_file: Parse CSV/Excel files into structured data                   ║

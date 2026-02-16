@@ -1,6 +1,6 @@
 /**
  * Template Loader
- * Load YAML template files from a directory and register them in the btree Registry.
+ * Load YAML template files from a directory and register them in the behaviour-tree Registry.
  * Templates can then be referenced by SubTree nodes using their template ID.
  */
 

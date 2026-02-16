@@ -12,7 +12,7 @@ import type { ObservableNodeEvent } from "./types.js";
  * Usage in workflow:
  * ```typescript
  * import { proxySinks } from '@temporalio/workflow';
- * import type { ObservabilitySinks } from '@wayfarer-ai/btree-workflows';
+ * import type { ObservabilitySinks } from '@q1k-oss/behaviour-tree-workflows';
  *
  * const { events } = proxySinks<ObservabilitySinks>();
  * events.push(nodeEvent);  // Fire-and-forget
@@ -83,7 +83,7 @@ export type InjectedObservabilitySinks = {
  *
  * Usage in worker:
  * ```typescript
- * import { createObservabilitySinkHandler } from '@wayfarer-ai/btree-workflows';
+ * import { createObservabilitySinkHandler } from '@q1k-oss/behaviour-tree-workflows';
  *
  * const sinks = createObservabilitySinkHandler({
  *   onEvent: (workflowId, runId, event) => {

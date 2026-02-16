@@ -1,5 +1,5 @@
 /**
- * Activity implementations for btree workflows
+ * Activity implementations for behaviour-tree workflows
  *
  * These run in the worker process (outside the workflow sandbox)
  * and handle all I/O operations deterministically for Temporal.
@@ -20,7 +20,7 @@ import {
 
 /**
  * Execute an Active Pieces action
- * This wraps the btree executePieceAction for use as a Temporal activity
+ * This wraps the behaviour-tree executePieceAction for use as a Temporal activity
  */
 export async function executePieceActionActivity(
   request: PieceActivityRequest

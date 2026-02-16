@@ -3,7 +3,7 @@
  * Dynamically executes Active Pieces actions
  *
  * Active Pieces is an open-source automation platform with 440+ connectors.
- * This module wraps their npm packages for use in btree workflows.
+ * This module wraps their npm packages for use in behaviour-tree workflows.
  *
  * @see https://activepieces.com/docs
  */

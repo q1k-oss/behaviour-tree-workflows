@@ -91,7 +91,7 @@ async function run() {
 
       // Execute workflow
       const result = await client.workflow.execute("yamlWorkflow", {
-        taskQueue: "btree-workflows",
+        taskQueue: "behaviour-tree-workflows",
         workflowId: `${workflow.id}-${Date.now()}`,
         args: [args],
       });

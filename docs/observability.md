@@ -1,6 +1,6 @@
 # Observability Module
 
-The btree library includes an observability module for tracking workflow execution, capturing errors with context, and building execution timelines.
+The behaviour-tree library includes an observability module for tracking workflow execution, capturing errors with context, and building execution timelines.
 
 ## Overview
 
@@ -18,7 +18,7 @@ The observability system provides:
 Aggregates node lifecycle events into queryable state:
 
 ```typescript
-import { ExecutionTracker } from '@wayfarer-ai/btree';
+import { ExecutionTracker } from '@q1k-oss/behaviour-tree-workflows';
 
 const tracker = new ExecutionTracker(totalNodes);
 
@@ -91,7 +91,7 @@ interface TimelineEntry {
 For Temporal integration, the module provides sink types for exporting events:
 
 ```typescript
-import { ObservabilitySinks } from '@wayfarer-ai/btree';
+import { ObservabilitySinks } from '@q1k-oss/behaviour-tree-workflows';
 
 // In Temporal workflow
 const { events } = proxySinks<ObservabilitySinks>();
@@ -141,7 +141,7 @@ The ExecutionTracker provides heuristic-based fix suggestions for common errors:
 
 ## Integration with Temporal
 
-When using btree with Temporal, the observability module integrates via:
+When using behaviour-tree with Temporal, the observability module integrates via:
 
 1. **Query Handlers**: Expose tracker state to external queries
 2. **Workflow Sinks**: Export events without affecting determinism
