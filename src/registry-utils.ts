@@ -59,6 +59,7 @@ import { LLMChat } from "./actions/llm-chat.js";
 import { BrowserAgent } from "./actions/browser-agent.js";
 import { ClaudeAgent } from "./actions/claude-agent.js";
 import { GitHubAction } from "./actions/github-action.js";
+import { HumanTask } from "./actions/human-task.js";
 
 /**
  * Register all standard built-in nodes to a registry
@@ -156,4 +157,7 @@ export function registerStandardNodes(registry: Registry): void {
 
   // GitHub operations
   registry.register("GitHubAction", GitHubAction as any, { category: "action" });
+
+  // Human-in-the-loop
+  registry.register("HumanTask", HumanTask as any, { category: "action" });
 }
