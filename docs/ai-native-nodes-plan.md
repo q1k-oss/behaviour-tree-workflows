@@ -6,11 +6,28 @@ This document outlines the implementation plan for adding AI-native nodes to @q1
 
 AI-native nodes extend the behavior tree library with intelligent agents, LLM integrations, and modern AI capabilities. These nodes follow the same patterns as existing nodes (activity-based execution, blackboard integration, YAML support) while adding AI-specific features.
 
+### Implementation Progress
+
+| Phase | Total | Done | Remaining |
+|-------|-------|------|-----------|
+| Phase 1: MVP | 7 | 3 | 4 |
+| Phase 2: RAG Enhancement | 2 | 0 | 2 |
+| Phase 3: Media | 4 | 0 | 4 |
+| Phase 4: Utilities | 3 | 0 | 3 |
+| Phase 5: Orchestration | 4 | 0 | 4 |
+
 ---
 
 ## MVP Nodes (Phase 1)
 
 ### 1. ClaudeAgent
+
+> **Status**: DONE — `src/actions/claude-agent.ts` (27 tests)
+>
+> Autonomous coding agent powered by Claude Agent SDK. Supports configurable tools,
+> permissions (default/acceptEdits/bypassPermissions), MCP servers, subagents,
+> cost limits (maxBudgetUsd), variable resolution in prompt/systemPrompt/model/cwd.
+> Activity-based: `claudeAgent?: (request) => Promise<ClaudeAgentResult>`.
 
 **Purpose**: Goal-driven autonomous agent that can use tools, reason about tasks, and enable self-evolving workflows.
 
@@ -20,43 +37,57 @@ AI-native nodes extend the behavior tree library with intelligent agents, LLM in
 ```yaml
 type: ClaudeAgent
 props:
-  goal: "Analyze the sales data and create a summary report"
-  model: "claude-sonnet-4-20250514"  # or claude-opus-4-20250514
-  maxTurns: 10
-  tools:
-    - name: "read_file"
-      description: "Read contents of a file"
-    - name: "write_file"
-      description: "Write contents to a file"
-    - name: "bash"
-      description: "Execute shell commands"
-  systemPrompt: "You are a data analyst assistant."
-  outputKey: "agentResult"  # blackboard key for result
+  prompt: "Implement the Summarizer node following existing patterns"
+  model: "claude-sonnet-4-5-20250929"        # optional, variable-resolvable
+  systemPrompt: "You are a senior dev..."     # optional, variable-resolvable
+  allowedTools:                               # optional
+    - Read
+    - Write
+    - Edit
+    - Bash
+    - Glob
+    - Grep
+  permissionMode: "acceptEdits"               # default | acceptEdits | bypassPermissions
+  maxTurns: 50                                # default: 50
+  maxBudgetUsd: 5.0                           # optional cost cap
+  cwd: "${bb.workingDirectory}"               # optional, variable-resolvable
+  mcpServers:                                 # optional MCP server configs
+    playwright:
+      command: "npx"
+      args: ["@playwright/mcp@latest"]
+  agents:                                     # optional subagent definitions
+    code-reviewer:
+      description: "Expert code reviewer"
+      prompt: "Review code quality..."
+      tools: ["Read", "Glob", "Grep"]
+  outputKey: "agentResult"                    # required
 ```
 
 **Implementation Notes**:
-- Use Claude Agent SDK (`@anthropic-ai/claude-code` or direct API)
+- Uses Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) via activity
 - Support MCP tools (including Terminator for computer use)
-- Enable dynamic tool registration from blackboard
-- Capture conversation history for debugging
+- Subagent support for delegating specialized tasks
+- Session ID returned for resuming agent conversations
+- Cost tracking via totalCostUsd in result
 
 **Activity Interface**:
 ```typescript
-interface ClaudeAgentActivity {
-  executeAgent(params: {
-    goal: string;
-    model: string;
-    tools: ToolDefinition[];
-    systemPrompt?: string;
-    maxTurns: number;
-    context?: Record<string, unknown>;
-  }): Promise<AgentResult>;
-}
+claudeAgent?: (request: ClaudeAgentRequest) => Promise<ClaudeAgentResult>;
+
+// ClaudeAgentRequest: prompt, model?, systemPrompt?, allowedTools?, permissionMode?,
+//   maxTurns?, maxBudgetUsd?, cwd?, mcpServers?, agents?, context?
+// ClaudeAgentResult: result, sessionId, success, numTurns, totalCostUsd, usage, durationMs, errors?
 ```
 
 ---
 
 ### 2. BrowserAgent
+
+> **Status**: DONE — `src/actions/browser-agent.ts` (739-line test suite)
+>
+> Implemented as goal-driven agent via Browserbase + Stagehand. Supports context persistence,
+> session recording with debug URLs, configurable LLM provider/model, variable resolution.
+> Activity-based: `browserAgent?: (request) => Promise<BrowserAgentResult>`.
 
 **Purpose**: Web automation using natural language commands via Stagehand.
 
@@ -106,6 +137,8 @@ interface BrowserAgentActivity {
 ---
 
 ### 3. ComputerUseAgent
+
+> **Status**: NOT STARTED — Consider deferring (Terminator is Windows-only; Claude computer-use requires beta API access)
 
 **Purpose**: Desktop automation via accessibility APIs (Terminator) or vision (Claude computer-use).
 
@@ -161,6 +194,12 @@ interface ComputerUseActivity {
 
 ### 4. LLMChat
 
+> **Status**: DONE — `src/actions/llm-chat.ts` (775-line test suite)
+>
+> Multi-provider support (anthropic, openai, google, ollama). JSON mode with schema validation,
+> variable resolution in messages/model/systemPrompt, token usage tracking.
+> Activity-based: `llmChat?: (request) => Promise<LLMChatResult>`.
+
 **Purpose**: Direct LLM completion/chat - foundation for all AI interactions.
 
 **Why MVP**: Required building block for Summarizer, Classifier, Extractor, and custom AI logic.
@@ -211,6 +250,8 @@ interface LLMChatActivity {
 
 ### 5. VectorSearch
 
+> **Status**: NOT STARTED
+
 **Purpose**: Semantic similarity search over embeddings.
 
 **Why MVP**: Essential for RAG workflows - table stakes for AI applications.
@@ -257,6 +298,8 @@ interface VectorSearchActivity {
 
 ### 6. DocumentLoader
 
+> **Status**: NOT STARTED
+
 **Purpose**: Parse and chunk documents for RAG pipelines.
 
 **Why MVP**: Required companion to VectorSearch for building knowledge bases.
@@ -298,6 +341,8 @@ interface DocumentLoaderActivity {
 ---
 
 ### 7. Summarizer
+
+> **Status**: NOT STARTED
 
 **Purpose**: Condense long text into concise summaries.
 
@@ -725,47 +770,33 @@ interface AINodeMetrics {
 
 ## File Structure
 
+> **Note**: The originally planned `src/ai/` directory was not used. AI nodes follow the same
+> convention as all other action nodes — they live in `src/actions/` with co-located schemas
+> and tests. This keeps the project flat and consistent.
+
 ```
-src/
-├── ai/                           # New AI nodes directory
-│   ├── index.ts                  # Exports all AI nodes
-│   ├── types.ts                  # Shared AI types
-│   │
-│   ├── agents/                   # Agent nodes
-│   │   ├── claude-agent.ts
-│   │   ├── browser-agent.ts
-│   │   └── computer-use-agent.ts
-│   │
-│   ├── llm/                      # LLM nodes
-│   │   ├── llm-chat.ts
-│   │   ├── summarizer.ts
-│   │   ├── text-classifier.ts
-│   │   ├── information-extractor.ts
-│   │   └── translator.ts
-│   │
-│   ├── rag/                      # RAG nodes
-│   │   ├── vector-search.ts
-│   │   ├── document-loader.ts
-│   │   ├── hybrid-retrieval.ts
-│   │   └── embeddings.ts
-│   │
-│   ├── media/                    # Media processing nodes
-│   │   ├── image-generation.ts
-│   │   ├── image-analysis.ts
-│   │   ├── speech-to-text.ts
-│   │   └── text-to-speech.ts
-│   │
-│   └── orchestration/            # Advanced orchestration
-│       ├── agent-router.ts
-│       ├── tool-selector.ts
-│       ├── memory-store.ts
-│       └── reflection-loop.ts
-│
-├── schemas/
-│   └── ai/                       # Zod schemas for AI nodes
-│       ├── claude-agent.schema.ts
-│       ├── browser-agent.schema.ts
-│       └── ...
+src/actions/
+├── llm-chat.ts              # ✅ LLMChat node
+├── llm-chat.schema.ts       # ✅ Zod schema
+├── llm-chat.test.ts         # ✅ Tests
+├── browser-agent.ts         # ✅ BrowserAgent node
+├── browser-agent.schema.ts  # ✅ Zod schema
+├── browser-agent.test.ts    # ✅ Tests
+├── claude-agent.ts          # ✅ ClaudeAgent node
+├── claude-agent.schema.ts   # ✅ Zod schema
+├── claude-agent.test.ts     # ✅ Tests
+├── github-action.ts         # ✅ GitHubAction node
+├── github-action.schema.ts  # ✅ Zod schema
+├── github-action.test.ts    # ✅ Tests
+├── summarizer.ts            # Planned
+├── text-classifier.ts       # Planned
+├── information-extractor.ts # Planned
+├── vector-search.ts         # Planned
+├── document-loader.ts       # Planned
+├── embeddings.ts            # Planned
+├── image-generation.ts      # Planned
+├── image-analysis.ts        # Planned
+└── ...
 ```
 
 ---
@@ -773,10 +804,10 @@ src/
 ## Implementation Order
 
 ### Phase 1: MVP (Weeks 1-4)
-1. **LLMChat** - Foundation for all AI interactions
-2. **ClaudeAgent** - Core agent capability
-3. **BrowserAgent** - High-value automation
-4. **ComputerUseAgent** - Desktop automation (Terminator MCP)
+1. ~~**LLMChat** - Foundation for all AI interactions~~ ✅ DONE
+2. ~~**ClaudeAgent** - Core agent capability~~ ✅ DONE
+3. ~~**BrowserAgent** - High-value automation~~ ✅ DONE
+4. **ComputerUseAgent** - Desktop automation (Terminator MCP) — *consider deferring*
 5. **VectorSearch + DocumentLoader** - RAG foundation
 6. **Summarizer** - Simple utility node
 
@@ -807,7 +838,7 @@ src/
 
 | Node | Primary Dependency | Notes |
 |------|-------------------|-------|
-| ClaudeAgent | `@anthropic-ai/sdk` | Claude API |
+| ClaudeAgent | `@anthropic-ai/claude-agent-sdk` | Claude Agent SDK |
 | BrowserAgent | `@browserbasehq/stagehand` | Stagehand v3 |
 | ComputerUseAgent | `@mediar-ai/terminator` | Windows; MCP server |
 | LLMChat | `@anthropic-ai/sdk`, `openai` | Multi-provider |
@@ -816,6 +847,38 @@ src/
 | ImageGeneration | `openai` | DALL-E API |
 | SpeechToText | `openai` | Whisper API |
 | TextToSpeech | `elevenlabs` | Or OpenAI TTS |
+
+---
+
+## Supporting Non-AI Nodes Backlog
+
+These non-AI nodes are needed to enable production workflow use cases (e.g., the dev workflow where ClaudeAgent implements features and creates PRs).
+
+### WaitForSignal
+
+**Purpose**: Pause workflow execution until an external signal is received (e.g., PR approved webhook, human approval callback).
+
+**Why needed**: Currently the only way to wait for external events is polling (While + HttpRequest + Delay). WaitForSignal maps directly to Temporal signals for durable, event-driven workflows without wasting compute.
+
+**Use case**: Wait for PR approval, wait for human review, wait for deployment completion.
+
+### Notification
+
+**Purpose**: Send notifications via Slack, email, or arbitrary webhook when a workflow reaches a milestone.
+
+**Why needed**: Can be approximated with HttpRequest today, but a dedicated node provides cleaner YAML, built-in templates, and multi-channel support.
+
+**Use case**: Notify team when PR is ready for review, alert on workflow failure, send completion summary.
+
+### GitHubAction ✅ DONE
+
+**Purpose**: Dedicated node for common GitHub operations (create branch, create PR, merge PR, check status, add labels/reviewers).
+
+**Why needed**: Currently achievable via ClaudeAgent+Bash or HttpRequest, but a lightweight dedicated node is cheaper (no LLM cost), faster, and more predictable for deterministic git operations.
+
+**Use case**: Create feature branch, open PR with template, merge after approval, add reviewers.
+
+**Implementation**: `src/actions/github-action.ts` — 10 operations (createBranch, createPullRequest, getPullRequest, mergePullRequest, closePullRequest, createReview, listIssues, addLabels, createComment, createRelease). Activity-based, variable resolution in repo and params.
 
 ---
 

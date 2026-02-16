@@ -57,6 +57,8 @@ import { HttpRequest } from "./actions/http-request.js";
 import { CodeExecution } from "./actions/code-execution.js";
 import { LLMChat } from "./actions/llm-chat.js";
 import { BrowserAgent } from "./actions/browser-agent.js";
+import { ClaudeAgent } from "./actions/claude-agent.js";
+import { GitHubAction } from "./actions/github-action.js";
 
 /**
  * Register all standard built-in nodes to a registry
@@ -150,4 +152,8 @@ export function registerStandardNodes(registry: Registry): void {
   // AI-native action nodes
   registry.register("LLMChat", LLMChat as any, { category: "action" });
   registry.register("BrowserAgent", BrowserAgent as any, { category: "action" });
+  registry.register("ClaudeAgent", ClaudeAgent as any, { category: "action" });
+
+  // GitHub operations
+  registry.register("GitHubAction", GitHubAction as any, { category: "action" });
 }
