@@ -83,7 +83,7 @@ export interface ClaudeAgentConfig extends NodeConfiguration {
  * props:
  *   prompt: "${bb.taskDescription}"
  *   systemPrompt: |
- *     You are working on @wayfarer-ai/btree-workflows.
+ *     You are working on @q1k-oss/behaviour-tree-workflows.
  *     Read CLAUDE.md for project conventions.
  *     Create a branch, implement changes, commit, push, and create a PR.
  *   allowedTools: [Read, Write, Edit, Bash, Glob, Grep]
