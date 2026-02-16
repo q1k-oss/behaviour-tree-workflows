@@ -135,6 +135,12 @@ export interface BtreeActivities {
 
   /** Execute GitHub operations (create branch, PR, merge, etc.) */
   githubAction?: (request: GitHubActionRequest) => Promise<GitHubActionResult>;
+
+  /** Create a human task (inserts into tasks table, returns taskId) */
+  createHumanTask?: (request: CreateHumanTaskRequest) => Promise<CreateHumanTaskResult>;
+
+  /** Wait for a human task to be completed (implemented as Temporal condition in workflow) */
+  waitForHumanTask?: (request: WaitForHumanTaskRequest) => Promise<WaitForHumanTaskResult>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -618,6 +624,91 @@ export interface GitHubActionResult {
   data: unknown;
   /** The operation that was performed */
   operation: GitHubOperation;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Human Task Activity Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A2UI component definition for human task surfaces
+ */
+export interface A2UIComponent {
+  id: string;
+  component: Record<string, unknown>;
+  weight?: number;
+}
+
+/**
+ * Request to create a human task
+ */
+export interface CreateHumanTaskRequest {
+  /** Btree node ID that created this task */
+  nodeId: string;
+  /** Tenant ID for multi-tenancy */
+  tenantId: string;
+  /** Execution/workflow ID */
+  executionId: string;
+  /** Task title */
+  title: string;
+  /** Task description */
+  description?: string;
+  /** Direct assignee email */
+  assigneeEmail?: string;
+  /** Role-based assignment */
+  assigneeRole?: string;
+  /** A2UI component definitions (the frozen surface template) */
+  a2uiComponents: A2UIComponent[];
+  /** Resolved A2UI data model (bindings already evaluated) */
+  a2uiDataModel: Record<string, unknown>;
+  /** Timeout in milliseconds before task expires */
+  timeoutMs?: number;
+  /** What to do on timeout: 'expire' | 'approve' | 'reject' */
+  onTimeout?: string;
+  /** Optional metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Result from creating a human task
+ */
+export interface CreateHumanTaskResult {
+  /** Generated task ID (UUID) */
+  taskId: string;
+  /** URL where the task can be accessed */
+  taskUrl: string;
+}
+
+/**
+ * Request to wait for a human task to be completed
+ */
+export interface WaitForHumanTaskRequest {
+  /** Task ID to wait for */
+  taskId: string;
+  /** Node ID (for signal routing) */
+  nodeId: string;
+  /** Timeout in milliseconds */
+  timeoutMs?: number;
+  /** What to do on timeout */
+  onTimeout?: string;
+}
+
+/**
+ * Result from a completed human task
+ */
+export interface WaitForHumanTaskResult {
+  /** Whether the task was completed (vs timed out) */
+  completed: boolean;
+  /** Submitted form data from the user */
+  submittedData?: Record<string, unknown>;
+  /** Decision string (e.g., 'approved', 'rejected') */
+  decision?: string;
+  /** User ID who completed the task */
+  completedBy?: string;
+  /** Timestamp when completed */
+  completedAt?: string;
+  /** Whether the task timed out */
+  timedOut?: boolean;
 }
 
 /**

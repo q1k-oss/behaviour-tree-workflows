@@ -26,3 +26,6 @@ export { ClaudeAgent, type ClaudeAgentConfig } from "./claude-agent.js";
 
 // GitHub operations
 export { GitHubAction, type GitHubActionConfig } from "./github-action.js";
+
+// Human-in-the-loop
+export { HumanTask, type HumanTaskConfig } from "./human-task.js";

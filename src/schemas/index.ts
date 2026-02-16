@@ -35,6 +35,7 @@ import { recoveryConfigurationSchema } from "../composites/recovery.schema.js";
 // AI-native action schemas
 import { llmChatSchema } from "../actions/llm-chat.schema.js";
 import { browserAgentSchema } from "../actions/browser-agent.schema.js";
+import { humanTaskSchema } from "../actions/human-task.schema.js";
 
 // Action schemas - Script removed, use CodeExecution instead
 
@@ -101,6 +102,9 @@ export class SchemaRegistry {
     // AI-native action schemas
     this.register("LLMChat", llmChatSchema);
     this.register("BrowserAgent", browserAgentSchema);
+
+    // Human-in-the-loop
+    this.register("HumanTask", humanTaskSchema);
 
     // Action schemas - Script removed, use CodeExecution instead
   }
