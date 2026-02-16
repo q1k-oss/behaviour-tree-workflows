@@ -129,6 +129,12 @@ export interface BtreeActivities {
 
   /** Execute autonomous browser agent via Browserbase + Stagehand */
   browserAgent?: (request: BrowserAgentRequest) => Promise<BrowserAgentResult>;
+
+  /** Execute autonomous Claude agent via Claude Agent SDK */
+  claudeAgent?: (request: ClaudeAgentRequest) => Promise<ClaudeAgentResult>;
+
+  /** Execute GitHub operations (create branch, PR, merge, etc.) */
+  githubAction?: (request: GitHubActionRequest) => Promise<GitHubActionResult>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -492,6 +498,126 @@ export interface BrowserAgentResult {
 
   // Metrics
   executionTimeMs: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Claude Agent Activity Types (Claude Agent SDK)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * MCP server configuration for ClaudeAgent
+ */
+export type ClaudeAgentMcpServerConfig =
+  | { type?: "stdio"; command: string; args?: string[]; env?: Record<string, string> }
+  | { type: "sse"; url: string; headers?: Record<string, string> }
+  | { type: "http"; url: string; headers?: Record<string, string> };
+
+/**
+ * Subagent definition for ClaudeAgent
+ */
+export interface ClaudeAgentSubagent {
+  description: string;
+  prompt: string;
+  tools?: string[];
+  model?: "sonnet" | "opus" | "haiku" | "inherit";
+}
+
+/**
+ * Request for autonomous Claude agent execution
+ */
+export interface ClaudeAgentRequest {
+  /** Task prompt for the agent */
+  prompt: string;
+  /** Model to use (e.g., "claude-sonnet-4-5-20250929") */
+  model?: string;
+  /** System prompt for agent behavior */
+  systemPrompt?: string;
+  /** Tools the agent can use (e.g., ["Read", "Write", "Edit", "Bash"]) */
+  allowedTools?: string[];
+  /** Permission mode: default, acceptEdits, bypassPermissions */
+  permissionMode?: "default" | "acceptEdits" | "bypassPermissions";
+  /** Maximum conversation turns */
+  maxTurns?: number;
+  /** Maximum budget in USD */
+  maxBudgetUsd?: number;
+  /** Working directory for the agent */
+  cwd?: string;
+  /** MCP server configurations */
+  mcpServers?: Record<string, ClaudeAgentMcpServerConfig>;
+  /** Subagent definitions */
+  agents?: Record<string, ClaudeAgentSubagent>;
+  /** Extra context data passed from blackboard */
+  context?: Record<string, unknown>;
+}
+
+/**
+ * Result from Claude agent execution
+ */
+export interface ClaudeAgentResult {
+  /** Final text result from the agent */
+  result: string;
+  /** Session ID for resuming/continuing */
+  sessionId: string;
+  /** Whether the agent completed successfully */
+  success: boolean;
+  /** Number of conversation turns used */
+  numTurns: number;
+  /** Total cost in USD */
+  totalCostUsd: number;
+  /** Token usage statistics */
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
+  };
+  /** Execution duration in milliseconds */
+  durationMs: number;
+  /** Errors encountered during execution */
+  errors?: string[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GitHub Action Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Supported GitHub operations
+ */
+export type GitHubOperation =
+  | "createBranch"
+  | "createPullRequest"
+  | "getPullRequest"
+  | "mergePullRequest"
+  | "closePullRequest"
+  | "createReview"
+  | "listIssues"
+  | "addLabels"
+  | "createComment"
+  | "createRelease";
+
+/**
+ * Request for a GitHub operation
+ */
+export interface GitHubActionRequest {
+  /** The operation to perform */
+  operation: GitHubOperation;
+  /** Repository in "owner/repo" format */
+  repo: string;
+  /** Operation-specific parameters */
+  params: Record<string, unknown>;
+}
+
+/**
+ * Result of a GitHub operation
+ */
+export interface GitHubActionResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+  /** Operation-specific response data */
+  data: unknown;
+  /** The operation that was performed */
+  operation: GitHubOperation;
 }
 
 /**

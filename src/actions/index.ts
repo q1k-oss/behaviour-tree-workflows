@@ -22,3 +22,7 @@ export { CodeExecution, type CodeExecutionConfig } from "./code-execution.js";
 // AI-native action nodes
 export { LLMChat, type LLMChatConfig } from "./llm-chat.js";
 export { BrowserAgent, type BrowserAgentConfig } from "./browser-agent.js";
+export { ClaudeAgent, type ClaudeAgentConfig } from "./claude-agent.js";
+
+// GitHub operations
+export { GitHubAction, type GitHubActionConfig } from "./github-action.js";
