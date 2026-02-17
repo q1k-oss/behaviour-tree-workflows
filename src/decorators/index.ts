@@ -10,4 +10,5 @@ export { Precondition } from "./precondition.js";
 export { Repeat } from "./repeat.js";
 export { RunOnce } from "./run-once.js";
 export { SoftAssert } from "./soft-assert.js";
+export { StreamingSink } from "./streaming-sink.js";
 export { Timeout } from "./timeout.js";

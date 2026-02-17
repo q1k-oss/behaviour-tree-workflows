@@ -16,6 +16,21 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./ai-sdk": {
+      "import": {
+        "types": "./dist/ai-sdk/index.d.ts",
+        "default": "./dist/ai-sdk/index.js"
+      },
+      "require": {
+        "types": "./dist/ai-sdk/index.d.cts",
+        "default": "./dist/ai-sdk/index.cjs"
+      }
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "ai-sdk": ["./dist/ai-sdk/index.d.ts"]
     }
   },
   "files": [
@@ -37,8 +52,8 @@
   },
   "scripts": {
     "clean": "rm -rf dist",
-    "dev": "tsup-node src/index.ts --watch --format cjs,esm --dts",
-    "build": "npm run clean && tsup-node src/index.ts --format cjs,esm --dts",
+    "dev": "tsup-node src/index.ts src/ai-sdk/index.ts --watch --format cjs,esm --dts",
+    "build": "npm run clean && tsup-node src/index.ts src/ai-sdk/index.ts --format cjs,esm --dts",
     "typecheck": "tsc --noEmit",
     "test": "CI=true vitest --coverage",
     "test:watch": "vitest --watch",
@@ -52,7 +67,23 @@
     "js-yaml": "^4.1.1",
     "zod": "^4.2.1"
   },
+  "peerDependencies": {
+    "ai": ">=4.0.0",
+    "@ai-sdk/anthropic": ">=1.0.0",
+    "@ai-sdk/openai": ">=1.0.0",
+    "@ai-sdk/google": ">=1.0.0",
+    "ollama-ai-provider": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ai": { "optional": true },
+    "@ai-sdk/anthropic": { "optional": true },
+    "@ai-sdk/openai": { "optional": true },
+    "@ai-sdk/google": { "optional": true },
+    "ollama-ai-provider": { "optional": true }
+  },
   "devDependencies": {
+    "@ai-sdk/anthropic": "^3.0.44",
+    "@ai-sdk/openai": "^3.0.29",
     "@temporalio/client": "^1.10.0",
     "@temporalio/testing": "^1.10.0",
     "@temporalio/worker": "^1.10.0",
@@ -60,6 +91,7 @@
     "@types/node": "^24.2.1",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "ai": "^6.0.86",
     "tsup": "^8.5.0",
     "tsx": "^4.19.2",
     "typescript": "latest",

@@ -37,6 +37,16 @@ import { llmChatSchema } from "../actions/llm-chat.schema.js";
 import { browserAgentSchema } from "../actions/browser-agent.schema.js";
 import { humanTaskSchema } from "../actions/human-task.schema.js";
 
+// Utility schemas
+import { setVariableSchema } from "../utilities/set-variable.schema.js";
+
+// Agent loop schemas
+import { llmToolCallSchema } from "../actions/llm-tool-call.schema.js";
+import { toolExecutorSchema } from "../actions/tool-executor.schema.js";
+import { waitForSignalSchema } from "../actions/wait-for-signal.schema.js";
+import { toolRouterSchema } from "../actions/tool-router.schema.js";
+import { streamingSinkSchema } from "../decorators/streaming-sink.schema.js";
+
 // Action schemas - Script removed, use CodeExecution instead
 
 /**
@@ -105,6 +115,16 @@ export class SchemaRegistry {
 
     // Human-in-the-loop
     this.register("HumanTask", humanTaskSchema);
+
+    // Utility schemas
+    this.register("SetVariable", setVariableSchema);
+
+    // Agent loop primitives
+    this.register("LLMToolCall", llmToolCallSchema);
+    this.register("ToolExecutor", toolExecutorSchema);
+    this.register("WaitForSignal", waitForSignalSchema);
+    this.register("ToolRouter", toolRouterSchema);
+    this.register("StreamingSink", streamingSinkSchema as any);
 
     // Action schemas - Script removed, use CodeExecution instead
   }
