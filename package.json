@@ -1,6 +1,6 @@
 {
   "name": "@q1k-oss/behaviour-tree-workflows",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Behavior tree library for TypeScript — 30+ production-ready nodes, YAML workflows, Temporal integration, and built-in observability",
   "type": "module",
   "main": "./dist/index.cjs",
