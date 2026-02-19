@@ -152,7 +152,9 @@ export class MockAction extends ActionNode {
 }
 
 /**
- * Condition that checks if a blackboard value meets a criteria
+ * Condition that checks if a blackboard value meets a criteria.
+ * Supports dotted path keys (e.g., "llmResponse.stopReason") to access
+ * nested properties of blackboard values.
  */
 export class CheckCondition extends ConditionNode {
   private key: string;
@@ -173,8 +175,35 @@ export class CheckCondition extends ConditionNode {
     this.value = config.value;
   }
 
+  /**
+   * Resolve a potentially dotted key from the blackboard.
+   * Tries exact key first (backward compatible), then dotted path traversal.
+   */
+  private resolveBlackboardValue(context: TemporalContext): unknown {
+    const exact = context.blackboard.get(this.key);
+    if (exact !== undefined) {
+      return exact;
+    }
+
+    if (this.key.includes(".")) {
+      const segments = this.key.split(".");
+      const rootKey = segments[0] as string;
+      let current: unknown = context.blackboard.get(rootKey);
+      for (let i = 1; i < segments.length; i++) {
+        if (current == null || typeof current !== "object") {
+          return undefined;
+        }
+        const segment = segments[i] as string;
+        current = (current as Record<string, unknown>)[segment];
+      }
+      return current;
+    }
+
+    return undefined;
+  }
+
   async executeTick(context: TemporalContext): Promise<NodeStatus> {
-    const actualValue = context.blackboard.get(this.key);
+    const actualValue = this.resolveBlackboardValue(context);
     let result = false;
 
     switch (this.operator) {

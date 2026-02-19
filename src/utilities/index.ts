@@ -6,6 +6,8 @@ export type { LogMessageConfig } from "./log-message.js";
 export { LogMessage } from "./log-message.js";
 export type { RegexExtractConfig } from "./regex-extract.js";
 export { RegexExtract } from "./regex-extract.js";
+export type { SetVariableConfig } from "./set-variable.js";
+export { SetVariable } from "./set-variable.js";
 
 // Variable resolution utilities
 export type { VariableContext, ResolveOptions } from "./variable-resolver.js";

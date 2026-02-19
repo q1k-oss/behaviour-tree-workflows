@@ -141,6 +141,15 @@ export interface BtreeActivities {
 
   /** Wait for a human task to be completed (implemented as Temporal condition in workflow) */
   waitForHumanTask?: (request: WaitForHumanTaskRequest) => Promise<WaitForHumanTaskResult>;
+
+  /** Execute a single LLM turn with tool calling support */
+  agentLoopTurn?: (request: AgentLoopTurnRequest) => Promise<AgentLoopTurnResult>;
+
+  /** Execute a tool call by name */
+  executeAgentTool?: (request: ExecuteAgentToolRequest) => Promise<ExecuteAgentToolResult>;
+
+  /** Wait for a generic Temporal signal (implemented as condition in workflow) */
+  waitForSignal?: (request: WaitForSignalRequest) => Promise<WaitForSignalResult>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -709,6 +718,112 @@ export interface WaitForHumanTaskResult {
   completedAt?: string;
   /** Whether the task timed out */
   timedOut?: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Agent Loop Types (Decomposed Agent Primitives)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Content block types for structured LLM messages (Anthropic-compatible)
+ */
+export type AgentContentBlock =
+  | { type: "text"; text: string }
+  | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
+  | { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean };
+
+/**
+ * Rich message format supporting both plain text and structured content blocks
+ */
+export interface AgentMessage {
+  role: "user" | "assistant" | "system";
+  content: string | AgentContentBlock[];
+}
+
+/**
+ * Tool definition passed to the LLM for tool calling
+ */
+export interface AgentToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
+
+/**
+ * A single tool call from an LLM response
+ */
+export interface AgentToolCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+/**
+ * Request for a single LLM turn with tool support
+ */
+export interface AgentLoopTurnRequest {
+  provider: LLMProvider;
+  model: string;
+  systemPrompt?: string;
+  messages: AgentMessage[];
+  tools?: AgentToolDefinition[];
+  temperature?: number;
+  maxTokens?: number;
+  streamChannelId?: string;
+}
+
+/**
+ * Result from a single LLM turn with tool support
+ */
+export interface AgentLoopTurnResult {
+  content: string;
+  toolCalls?: AgentToolCall[];
+  stopReason: "end_turn" | "tool_use" | "max_tokens";
+  usage: { promptTokens: number; completionTokens: number; totalTokens: number };
+}
+
+/**
+ * Request to execute a tool by name
+ */
+export interface ExecuteAgentToolRequest {
+  toolName: string;
+  toolInput: Record<string, unknown>;
+  context?: Record<string, unknown>;
+}
+
+/**
+ * Result from executing a tool
+ */
+export interface ExecuteAgentToolResult {
+  content: string;
+  isError: boolean;
+}
+
+/**
+ * Payload for generic Temporal signals
+ */
+export interface GenericSignalPayload {
+  signalName: string;
+  signalKey?: string;
+  data: Record<string, unknown>;
+}
+
+/**
+ * Request to wait for a Temporal signal
+ */
+export interface WaitForSignalRequest {
+  signalName: string;
+  signalKey?: string;
+  timeoutMs?: number;
+}
+
+/**
+ * Result from waiting for a signal
+ */
+export interface WaitForSignalResult {
+  received: boolean;
+  data?: Record<string, unknown>;
+  timedOut: boolean;
 }
 
 /**

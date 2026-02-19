@@ -29,3 +29,9 @@ export { GitHubAction, type GitHubActionConfig } from "./github-action.js";
 
 // Human-in-the-loop
 export { HumanTask, type HumanTaskConfig } from "./human-task.js";
+
+// Agent loop primitives (decomposed agent pattern)
+export { LLMToolCall, type LLMToolCallConfig } from "./llm-tool-call.js";
+export { ToolExecutor, type ToolExecutorConfig } from "./tool-executor.js";
+export { WaitForSignal, type WaitForSignalConfig } from "./wait-for-signal.js";
+export { ToolRouter, type ToolRouterConfig } from "./tool-router.js";

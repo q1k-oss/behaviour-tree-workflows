@@ -45,6 +45,7 @@ import {
 // Utilities
 import { LogMessage } from "./utilities/log-message.js";
 import { RegexExtract } from "./utilities/regex-extract.js";
+import { SetVariable } from "./utilities/set-variable.js";
 
 // Integrations
 import { IntegrationAction } from "./integrations/integration-action.js";
@@ -60,6 +61,11 @@ import { BrowserAgent } from "./actions/browser-agent.js";
 import { ClaudeAgent } from "./actions/claude-agent.js";
 import { GitHubAction } from "./actions/github-action.js";
 import { HumanTask } from "./actions/human-task.js";
+import { LLMToolCall } from "./actions/llm-tool-call.js";
+import { ToolExecutor } from "./actions/tool-executor.js";
+import { WaitForSignal } from "./actions/wait-for-signal.js";
+import { ToolRouter } from "./actions/tool-router.js";
+import { StreamingSink } from "./decorators/streaming-sink.js";
 
 /**
  * Register all standard built-in nodes to a registry
@@ -139,6 +145,7 @@ export function registerStandardNodes(registry: Registry): void {
   // Utilities
   registry.register("LogMessage", LogMessage as any, { category: "action" });
   registry.register("RegexExtract", RegexExtract as any, { category: "action" });
+  registry.register("SetVariable", SetVariable as any, { category: "action" });
 
   // Integrations
   registry.register("IntegrationAction", IntegrationAction as any, { category: "action" });
@@ -160,4 +167,11 @@ export function registerStandardNodes(registry: Registry): void {
 
   // Human-in-the-loop
   registry.register("HumanTask", HumanTask as any, { category: "action" });
+
+  // Agent loop primitives
+  registry.register("LLMToolCall", LLMToolCall as any, { category: "action" });
+  registry.register("ToolExecutor", ToolExecutor as any, { category: "action" });
+  registry.register("WaitForSignal", WaitForSignal as any, { category: "action" });
+  registry.register("ToolRouter", ToolRouter as any, { category: "action" });
+  registry.register("StreamingSink", StreamingSink as any, { category: "decorator" });
 }
