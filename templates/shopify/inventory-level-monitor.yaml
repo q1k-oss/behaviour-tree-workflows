@@ -1,0 +1,110 @@
+# Template: Shopify Inventory Level Monitor
+#
+# Monitors inventory levels for products, detecting low-stock and
+# out-of-stock conditions against configurable thresholds.
+#
+# Expected inputs (set on blackboard before calling):
+#   lowStockThreshold: number   - Units below which stock is "low" (default: 10)
+#
+# Output:
+#   snapshotData: object        - Metric snapshot with inventory stats per product
+#     { metricName, value, dimensions, context_json }
+
+type: Sequence
+id: inventory-level-monitor
+children:
+  # Step 1: Fetch products with inventory info from Shopify
+  - type: IntegrationAction
+    id: fetch-products
+    props:
+      provider: shopify
+      action: get_products
+      inputs:
+        limit: 250
+      storeResult: true
+      resultKey: products
+
+  # Step 2: Analyze inventory levels and build snapshots
+  - type: CodeExecution
+    id: compute-inventory-metrics
+    props:
+      language: javascript
+      code: |
+        const products = input.products?.result || [];
+        const lowStockThreshold = input.lowStockThreshold || 10;
+
+        const snapshots = [];
+        let totalOutOfStock = 0;
+        let totalLowStock = 0;
+        let totalProducts = 0;
+
+        for (const product of products) {
+          if (!product.variants) continue;
+
+          for (const variant of product.variants) {
+            totalProducts++;
+            const qty = variant.inventory_quantity || 0;
+            const sku = variant.sku || `${product.id}-${variant.id}`;
+
+            if (qty <= 0) {
+              totalOutOfStock++;
+              snapshots.push({
+                metricName: 'inventory_level',
+                value: qty,
+                dimensions: {
+                  sku,
+                  productTitle: product.title,
+                  variantTitle: variant.title,
+                  status: 'out_of_stock',
+                },
+                source: 'polling',
+                context_json: {
+                  productId: product.id,
+                  variantId: variant.id,
+                  lowStockThreshold,
+                },
+              });
+            } else if (qty <= lowStockThreshold) {
+              totalLowStock++;
+              snapshots.push({
+                metricName: 'inventory_level',
+                value: qty,
+                dimensions: {
+                  sku,
+                  productTitle: product.title,
+                  variantTitle: variant.title,
+                  status: 'low_stock',
+                },
+                source: 'polling',
+                context_json: {
+                  productId: product.id,
+                  variantId: variant.id,
+                  lowStockThreshold,
+                },
+              });
+            }
+          }
+        }
+
+        // Summary snapshot
+        snapshots.push({
+          metricName: 'inventory_summary',
+          value: totalOutOfStock,
+          dimensions: { type: 'out_of_stock_count' },
+          source: 'computed',
+          context_json: {
+            totalProducts,
+            totalOutOfStock,
+            totalLowStock,
+            lowStockThreshold,
+          },
+        });
+
+        return {
+          snapshotData: snapshots,
+          totalProducts,
+          totalOutOfStock,
+          totalLowStock,
+        };
+      storeResult: true
+      resultKey: snapshotData
