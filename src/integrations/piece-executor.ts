@@ -87,6 +87,7 @@ const PIECE_EXPORT_NAMES: Record<string, string> = {
   "@activepieces/piece-notion": "notion",
   "@activepieces/piece-github": "github",
   "@activepieces/piece-http": "http",
+  "@activepieces/piece-shopify": "shopify",
 };
 
 /**

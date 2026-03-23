@@ -1,0 +1,96 @@
+# Template: Shopify Carrier Delay Monitor
+#
+# Monitors unfulfilled orders for carrier pickup delays.
+# Detects orders that have been awaiting fulfillment beyond a threshold.
+#
+# Expected inputs (set on blackboard before calling):
+#   thresholdHours: number   - Hours before an order is considered delayed (default: 12)
+#
+# Output:
+#   snapshotData: object     - Metric snapshot with delay stats per carrier
+#     { metricName, value, dimensions, context_json }
+
+type: Sequence
+id: carrier-delay-monitor
+children:
+  # Step 1: Fetch unfulfilled orders from Shopify
+  - type: IntegrationAction
+    id: fetch-unfulfilled-orders
+    props:
+      provider: shopify
+      action: get_customer_orders
+      inputs:
+        status: unfulfilled
+      storeResult: true
+      resultKey: unfulfilledOrders
+
+  # Step 2: Compute delay metrics grouped by carrier
+  - type: CodeExecution
+    id: compute-delay-metrics
+    props:
+      language: javascript
+      code: |
+        const orders = input.unfulfilledOrders?.result || [];
+        const now = Date.now();
+        const thresholdHours = input.thresholdHours || 12;
+        const thresholdMs = thresholdHours * 60 * 60 * 1000;
+
+        // Group orders by shipping carrier
+        const carrierStats = {};
+
+        for (const order of orders) {
+          const createdAt = new Date(order.created_at).getTime();
+          const pendingHours = (now - createdAt) / (1000 * 60 * 60);
+          const carrier = order.shipping_lines?.[0]?.source || 'unknown';
+
+          if (!carrierStats[carrier]) {
+            carrierStats[carrier] = {
+              totalOrders: 0,
+              delayedOrders: 0,
+              maxPendingHours: 0,
+              avgPendingHours: 0,
+              totalPendingHours: 0,
+            };
+          }
+
+          const stats = carrierStats[carrier];
+          stats.totalOrders++;
+          stats.totalPendingHours += pendingHours;
+
+          if (pendingHours > thresholdHours) {
+            stats.delayedOrders++;
+          }
+
+          if (pendingHours > stats.maxPendingHours) {
+            stats.maxPendingHours = pendingHours;
+          }
+        }
+
+        // Calculate averages and build snapshot rows
+        const snapshots = [];
+        for (const [carrier, stats] of Object.entries(carrierStats)) {
+          stats.avgPendingHours = stats.totalOrders > 0
+            ? stats.totalPendingHours / stats.totalOrders
+            : 0;
+
+          snapshots.push({
+            metricName: 'pending_pickup_hours',
+            value: Math.round(stats.avgPendingHours * 10) / 10,
+            dimensions: { carrier },
+            source: 'polling',
+            context_json: {
+              totalOrders: stats.totalOrders,
+              delayedOrders: stats.delayedOrders,
+              maxPendingHours: Math.round(stats.maxPendingHours * 10) / 10,
+              thresholdHours,
+            },
+          });
+        }
+
+        return {
+          snapshotData: snapshots,
+          totalOrders: orders.length,
+          totalDelayed: Object.values(carrierStats).reduce((sum, s) => sum + s.delayedOrders, 0),
+        };
+      storeResult: true
+      resultKey: snapshotData

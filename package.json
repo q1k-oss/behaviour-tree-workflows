@@ -1,6 +1,6 @@
 {
   "name": "@q1k-oss/behaviour-tree-workflows",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Behavior tree library for TypeScript — 30+ production-ready nodes, YAML workflows, Temporal integration, and built-in observability",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -30,7 +30,9 @@
   },
   "typesVersions": {
     "*": {
-      "ai-sdk": ["./dist/ai-sdk/index.d.ts"]
+      "ai-sdk": [
+        "./dist/ai-sdk/index.d.ts"
+      ]
     }
   },
   "files": [
@@ -61,6 +63,7 @@
   },
   "dependencies": {
     "@activepieces/piece-google-sheets": "^0.14.0",
+    "@activepieces/piece-shopify": "^0.2.4",
     "@activepieces/pieces-framework": "^0.23.0",
     "@temporalio/activity": "^1.10.0",
     "@temporalio/workflow": "^1.10.0",
@@ -68,18 +71,28 @@
     "zod": "^4.2.1"
   },
   "peerDependencies": {
-    "ai": ">=4.0.0",
     "@ai-sdk/anthropic": ">=1.0.0",
-    "@ai-sdk/openai": ">=1.0.0",
     "@ai-sdk/google": ">=1.0.0",
+    "@ai-sdk/openai": ">=1.0.0",
+    "ai": ">=4.0.0",
     "ollama-ai-provider": ">=1.0.0"
   },
   "peerDependenciesMeta": {
-    "ai": { "optional": true },
-    "@ai-sdk/anthropic": { "optional": true },
-    "@ai-sdk/openai": { "optional": true },
-    "@ai-sdk/google": { "optional": true },
-    "ollama-ai-provider": { "optional": true }
+    "ai": {
+      "optional": true
+    },
+    "@ai-sdk/anthropic": {
+      "optional": true
+    },
+    "@ai-sdk/openai": {
+      "optional": true
+    },
+    "@ai-sdk/google": {
+      "optional": true
+    },
+    "ollama-ai-provider": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "^3.0.44",

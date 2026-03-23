@@ -1,0 +1,91 @@
+# Template: Shopify Order Volume Monitor
+#
+# Monitors order volume over the last hour, computing hourly rate
+# for deviation detection against rolling baselines.
+#
+# Expected inputs (set on blackboard before calling):
+#   lookbackMinutes: number   - Minutes to look back for counting orders (default: 60)
+#
+# Output:
+#   snapshotData: object      - Metric snapshot with order volume stats
+#     { metricName, value, dimensions, context_json }
+
+type: Sequence
+id: order-volume-monitor
+children:
+  # Step 1: Fetch recent orders from Shopify
+  - type: IntegrationAction
+    id: fetch-recent-orders
+    props:
+      provider: shopify
+      action: get_customer_orders
+      inputs:
+        status: any
+        limit: 250
+      storeResult: true
+      resultKey: recentOrders
+
+  # Step 2: Compute order volume metrics
+  - type: CodeExecution
+    id: compute-volume-metrics
+    props:
+      language: javascript
+      code: |
+        const orders = input.recentOrders?.result || [];
+        const lookbackMinutes = input.lookbackMinutes || 60;
+        const now = Date.now();
+        const cutoff = now - lookbackMinutes * 60 * 1000;
+
+        // Filter orders within the lookback window
+        const recentOrders = orders.filter(o => {
+          const createdAt = new Date(o.created_at).getTime();
+          return createdAt >= cutoff;
+        });
+
+        // Compute revenue and break down by financial status
+        let totalRevenue = 0;
+        const statusCounts = {};
+
+        for (const order of recentOrders) {
+          totalRevenue += parseFloat(order.total_price || '0');
+          const status = order.financial_status || 'unknown';
+          statusCounts[status] = (statusCounts[status] || 0) + 1;
+        }
+
+        // Hourly rate
+        const hourlyRate = recentOrders.length / (lookbackMinutes / 60);
+
+        const snapshots = [
+          {
+            metricName: 'order_volume_hourly',
+            value: Math.round(hourlyRate * 10) / 10,
+            dimensions: {},
+            source: 'computed',
+            context_json: {
+              orderCount: recentOrders.length,
+              lookbackMinutes,
+              totalRevenue: Math.round(totalRevenue * 100) / 100,
+              statusBreakdown: statusCounts,
+            },
+          },
+          {
+            metricName: 'order_revenue_hourly',
+            value: Math.round((totalRevenue / (lookbackMinutes / 60)) * 100) / 100,
+            dimensions: {},
+            source: 'computed',
+            context_json: {
+              totalRevenue: Math.round(totalRevenue * 100) / 100,
+              orderCount: recentOrders.length,
+              lookbackMinutes,
+            },
+          },
+        ];
+
+        return {
+          snapshotData: snapshots,
+          orderCount: recentOrders.length,
+          hourlyRate: Math.round(hourlyRate * 10) / 10,
+          totalRevenue: Math.round(totalRevenue * 100) / 100,
+        };
+      storeResult: true
+      resultKey: snapshotData
