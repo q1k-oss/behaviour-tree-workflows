@@ -11,6 +11,29 @@ import {
 } from "../types.js";
 import { checkSignal } from "../utils/signal-check.js";
 
+/**
+ * Resolve a dot-path from the blackboard.
+ * "currentProduct.variants" → blackboard.get("currentProduct").variants
+ */
+function resolveFromBlackboard(blackboard: { get(key: string): unknown }, path: string): unknown {
+  const parts = path.split(".");
+  const firstPart = parts[0];
+  if (!firstPart) return undefined;
+
+  let value: unknown = blackboard.get(firstPart);
+
+  for (let i = 1; i < parts.length && value != null; i++) {
+    const part = parts[i];
+    if (part && typeof value === "object") {
+      value = (value as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+
+  return value;
+}
+
 export interface ForEachConfiguration extends NodeConfiguration {
   collectionKey: string; // Blackboard key for array
   itemKey: string; // Blackboard key for current item
@@ -49,7 +72,10 @@ export class ForEach extends CompositeNode {
       );
     }
 
-    const collection = context.blackboard.get(this.collectionKey);
+    // Support dot-path: "currentProduct.variants" → blackboard.get("currentProduct").variants
+    const collection = this.collectionKey.includes(".")
+      ? resolveFromBlackboard(context.blackboard, this.collectionKey)
+      : context.blackboard.get(this.collectionKey);
 
     if (!collection) {
       this.log(`Collection '${this.collectionKey}' not found in blackboard`);

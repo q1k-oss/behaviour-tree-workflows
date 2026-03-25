@@ -231,6 +231,36 @@ describe("ForEach", () => {
       expect(secondRunCount).toBe(3); // Initial 1 + 2 items
     });
 
+    it("should resolve dot-path collectionKey", async () => {
+      const forEach = new ForEach({
+        id: "forEach1",
+        collectionKey: "currentProduct.variants",
+        itemKey: "currentVariant",
+      });
+
+      blackboard.set("currentProduct", {
+        title: "T-Shirt",
+        variants: [
+          { sku: "TSH-S", inventory_quantity: 0 },
+          { sku: "TSH-M", inventory_quantity: 5 },
+        ],
+      });
+
+      const skus: string[] = [];
+      class RecordSku extends SuccessNode {
+        async tick(ctx: TemporalContext): Promise<NodeStatus> {
+          const variant = ctx.blackboard.get("currentVariant") as { sku: string };
+          skus.push(variant.sku);
+          return await super.tick(ctx);
+        }
+      }
+
+      forEach.addChild(new RecordSku({ id: "body" }));
+      const result = await forEach.tick(context);
+      expect(result).toBe(NodeStatus.SUCCESS);
+      expect(skus).toEqual(["TSH-S", "TSH-M"]);
+    });
+
     it("should propagate ConfigurationError with no child", async () => {
       const forEach = new ForEach({
         id: "forEach1",
