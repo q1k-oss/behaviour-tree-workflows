@@ -1,91 +1,109 @@
 # Template: Shopify Order Volume Monitor
 #
-# Monitors order volume over the last hour, computing hourly rate
-# for deviation detection against rolling baselines.
+# Monitors order volume by fetching recent orders for a known customer.
+# For store-wide order monitoring, use Mode 2 (shopify_graphql tool).
 #
 # Expected inputs (set on blackboard before calling):
+#   customerId: string        - Shopify customer ID to monitor
 #   lookbackMinutes: number   - Minutes to look back for counting orders (default: 60)
+#   nowTimestamp: number       - Current timestamp in ms (set by caller)
 #
 # Output:
 #   snapshotData: object      - Metric snapshot with order volume stats
-#     { metricName, value, dimensions, context_json }
 
 type: Sequence
 id: order-volume-monitor
 children:
-  # Step 1: Fetch recent orders from Shopify
+  # Step 1: Fetch customer orders from Shopify
   - type: IntegrationAction
     id: fetch-recent-orders
     props:
       provider: shopify
       action: get_customer_orders
       inputs:
-        status: any
-        limit: 250
+        customerId: "${bb.customerId}"
       storeResult: true
       resultKey: recentOrders
 
-  # Step 2: Compute order volume metrics
-  - type: CodeExecution
-    id: compute-volume-metrics
+  # Step 2: Compute cutoff timestamp
+  - type: MathOp
+    id: compute-cutoff
     props:
-      language: javascript
-      code: |
-        const orders = input.recentOrders?.result || [];
-        const lookbackMinutes = input.lookbackMinutes || 60;
-        const now = Date.now();
-        const cutoff = now - lookbackMinutes * 60 * 1000;
+      expression: "${bb.nowTimestamp} - ${bb.lookbackMinutes} * 60 * 1000"
+      outputKey: cutoffTimestamp
 
-        // Filter orders within the lookback window
-        const recentOrders = orders.filter(o => {
-          const createdAt = new Date(o.created_at).getTime();
-          return createdAt >= cutoff;
-        });
+  # Step 3: Filter orders within time window
+  - type: ArrayFilter
+    id: filter-recent
+    props:
+      input: "${bb.recentOrders}"
+      outputKey: windowOrders
+      conditions:
+        - field: created_at_ms
+          operator: gte
+          value: "${bb.cutoffTimestamp}"
 
-        // Compute revenue and break down by financial status
-        let totalRevenue = 0;
-        const statusCounts = {};
+  # Step 4: Aggregate order stats
+  - type: Aggregate
+    id: order-stats
+    props:
+      input: "${bb.windowOrders}"
+      outputKey: orderStats
+      operations:
+        - type: count
+          as: orderCount
+        - type: sum
+          field: total_price
+          as: totalRevenue
 
-        for (const order of recentOrders) {
-          totalRevenue += parseFloat(order.total_price || '0');
-          const status = order.financial_status || 'unknown';
-          statusCounts[status] = (statusCounts[status] || 0) + 1;
-        }
+  # Step 5: Group by financial status
+  - type: Aggregate
+    id: status-breakdown
+    props:
+      input: "${bb.windowOrders}"
+      outputKey: statusBreakdown
+      groupBy: financial_status
+      operations:
+        - type: count
 
-        // Hourly rate
-        const hourlyRate = recentOrders.length / (lookbackMinutes / 60);
+  # Step 6: Compute hourly rate
+  - type: MathOp
+    id: compute-rate
+    props:
+      expression: "${bb.orderStats.orderCount} / (${bb.lookbackMinutes} / 60)"
+      outputKey: hourlyRate
+      round: round
+      precision: 1
 
-        const snapshots = [
-          {
-            metricName: 'order_volume_hourly',
-            value: Math.round(hourlyRate * 10) / 10,
-            dimensions: {},
-            source: 'computed',
-            context_json: {
-              orderCount: recentOrders.length,
-              lookbackMinutes,
-              totalRevenue: Math.round(totalRevenue * 100) / 100,
-              statusBreakdown: statusCounts,
-            },
-          },
-          {
-            metricName: 'order_revenue_hourly',
-            value: Math.round((totalRevenue / (lookbackMinutes / 60)) * 100) / 100,
-            dimensions: {},
-            source: 'computed',
-            context_json: {
-              totalRevenue: Math.round(totalRevenue * 100) / 100,
-              orderCount: recentOrders.length,
-              lookbackMinutes,
-            },
-          },
-        ];
+  # Step 7: Round revenue
+  - type: MathOp
+    id: round-revenue
+    props:
+      expression: "${bb.orderStats.totalRevenue}"
+      outputKey: totalRevenue
+      round: round
+      precision: 2
 
-        return {
-          snapshotData: snapshots,
-          orderCount: recentOrders.length,
-          hourlyRate: Math.round(hourlyRate * 10) / 10,
-          totalRevenue: Math.round(totalRevenue * 100) / 100,
-        };
-      storeResult: true
-      resultKey: snapshotData
+  # Step 8: Build metric snapshot
+  - type: DataTransform
+    id: build-snapshot
+    props:
+      outputKey: snapshotData
+      wrapInArray: true
+      mappings:
+        - target: metricName
+          value: "order_volume_hourly"
+        - target: value
+          value: "${bb.hourlyRate}"
+        - target: dimensions
+          value: {}
+        - target: source
+          value: "computed"
+        - target: context_json.orderCount
+          value: "${bb.orderStats.orderCount}"
+        - target: context_json.lookbackMinutes
+          value: "${bb.lookbackMinutes}"
+        - target: context_json.totalRevenue
+          value: "${bb.totalRevenue}"
+        - target: context_json.statusBreakdown
+          value: "${bb.statusBreakdown}"

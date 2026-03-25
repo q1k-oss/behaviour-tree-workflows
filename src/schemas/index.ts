@@ -39,6 +39,11 @@ import { humanTaskSchema } from "../actions/human-task.schema.js";
 
 // Utility schemas
 import { setVariableSchema } from "../utilities/set-variable.schema.js";
+import { mathOpSchema } from "../utilities/math-op.schema.js";
+import { arrayFilterSchema } from "../utilities/array-filter.schema.js";
+import { aggregateSchema } from "../utilities/aggregate.schema.js";
+import { thresholdCheckSchema } from "../utilities/threshold-check.schema.js";
+import { dataTransformSchema } from "../utilities/data-transform.schema.js";
 
 // Agent loop schemas
 import { llmToolCallSchema } from "../actions/llm-tool-call.schema.js";
@@ -118,6 +123,11 @@ export class SchemaRegistry {
 
     // Utility schemas
     this.register("SetVariable", setVariableSchema);
+    this.register("MathOp", mathOpSchema);
+    this.register("ArrayFilter", arrayFilterSchema);
+    this.register("Aggregate", aggregateSchema);
+    this.register("ThresholdCheck", thresholdCheckSchema);
+    this.register("DataTransform", dataTransformSchema);
 
     // Agent loop primitives
     this.register("LLMToolCall", llmToolCallSchema);

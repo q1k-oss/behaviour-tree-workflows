@@ -46,6 +46,11 @@ import {
 import { LogMessage } from "./utilities/log-message.js";
 import { RegexExtract } from "./utilities/regex-extract.js";
 import { SetVariable } from "./utilities/set-variable.js";
+import { MathOp } from "./utilities/math-op.js";
+import { ArrayFilter } from "./utilities/array-filter.js";
+import { Aggregate } from "./utilities/aggregate.js";
+import { ThresholdCheck } from "./utilities/threshold-check.js";
+import { DataTransform } from "./utilities/data-transform.js";
 
 // Integrations
 import { IntegrationAction } from "./integrations/integration-action.js";
@@ -146,6 +151,11 @@ export function registerStandardNodes(registry: Registry): void {
   registry.register("LogMessage", LogMessage as any, { category: "action" });
   registry.register("RegexExtract", RegexExtract as any, { category: "action" });
   registry.register("SetVariable", SetVariable as any, { category: "action" });
+  registry.register("MathOp", MathOp as any, { category: "action" });
+  registry.register("ArrayFilter", ArrayFilter as any, { category: "action" });
+  registry.register("Aggregate", Aggregate as any, { category: "action" });
+  registry.register("ThresholdCheck", ThresholdCheck as any, { category: "action" });
+  registry.register("DataTransform", DataTransform as any, { category: "action" });
 
   // Integrations
   registry.register("IntegrationAction", IntegrationAction as any, { category: "action" });
