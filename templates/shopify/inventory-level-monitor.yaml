@@ -7,8 +7,8 @@
 #   lowStockThreshold: number   - Units below which stock is "low" (default: 10)
 #
 # Output:
-#   snapshotData: object        - Metric snapshot with inventory stats per product
-#     { metricName, value, dimensions, context_json }
+#   snapshotData: array         - Metric snapshots for flagged variants
+#   inventorySummary: object    - Summary counts
 
 type: Sequence
 id: inventory-level-monitor
@@ -19,92 +19,92 @@ children:
     props:
       provider: shopify
       action: get_products
-      inputs:
-        limit: 250
+      inputs: {}
       storeResult: true
       resultKey: products
 
-  # Step 2: Analyze inventory levels and build snapshots
-  - type: CodeExecution
-    id: compute-inventory-metrics
+  # Step 2: Count total products
+  - type: Aggregate
+    id: count-products
     props:
-      language: javascript
-      code: |
-        const products = input.products?.result || [];
-        const lowStockThreshold = input.lowStockThreshold || 10;
+      input: "${bb.products}"
+      outputKey: productStats
+      operations:
+        - type: count
+          as: totalProducts
 
-        const snapshots = [];
-        let totalOutOfStock = 0;
-        let totalLowStock = 0;
-        let totalProducts = 0;
+  # Step 3: Initialize accumulators
+  - type: SetVariable
+    id: init-snapshots
+    props:
+      key: snapshots
+      value: []
 
-        for (const product of products) {
-          if (!product.variants) continue;
+  - type: SetVariable
+    id: init-out-of-stock
+    props:
+      key: outOfStockCount
+      value: 0
 
-          for (const variant of product.variants) {
-            totalProducts++;
-            const qty = variant.inventory_quantity || 0;
-            const sku = variant.sku || `${product.id}-${variant.id}`;
+  - type: SetVariable
+    id: init-low-stock
+    props:
+      key: lowStockCount
+      value: 0
 
-            if (qty <= 0) {
-              totalOutOfStock++;
-              snapshots.push({
-                metricName: 'inventory_level',
-                value: qty,
-                dimensions: {
-                  sku,
-                  productTitle: product.title,
-                  variantTitle: variant.title,
-                  status: 'out_of_stock',
-                },
-                source: 'polling',
-                context_json: {
-                  productId: product.id,
-                  variantId: variant.id,
-                  lowStockThreshold,
-                },
-              });
-            } else if (qty <= lowStockThreshold) {
-              totalLowStock++;
-              snapshots.push({
-                metricName: 'inventory_level',
-                value: qty,
-                dimensions: {
-                  sku,
-                  productTitle: product.title,
-                  variantTitle: variant.title,
-                  status: 'low_stock',
-                },
-                source: 'polling',
-                context_json: {
-                  productId: product.id,
-                  variantId: variant.id,
-                  lowStockThreshold,
-                },
-              });
-            }
-          }
-        }
+  # Step 4: Iterate products → variants, classify each
+  - type: ForEach
+    id: iterate-products
+    props:
+      collectionKey: products
+      itemKey: currentProduct
+    children:
+      - type: ForEach
+        id: iterate-variants
+        props:
+          collectionKey: currentProduct.variants
+          itemKey: currentVariant
+        children:
+          - type: Sequence
+            id: process-variant
+            children:
+              # Classify stock level
+              - type: ThresholdCheck
+                id: check-stock
+                props:
+                  value: "${bb.currentVariant.inventory_quantity}"
+                  thresholds:
+                    - operator: lte
+                      value: 0
+                      label: out_of_stock
+                    - operator: lte
+                      value: "${bb.lowStockThreshold}"
+                      label: low_stock
+                  outputKey: stockStatus
 
-        // Summary snapshot
-        snapshots.push({
-          metricName: 'inventory_summary',
-          value: totalOutOfStock,
-          dimensions: { type: 'out_of_stock_count' },
-          source: 'computed',
-          context_json: {
-            totalProducts,
-            totalOutOfStock,
-            totalLowStock,
-            lowStockThreshold,
-          },
-        });
-
-        return {
-          snapshotData: snapshots,
-          totalProducts,
-          totalOutOfStock,
-          totalLowStock,
-        };
-      storeResult: true
-      resultKey: snapshotData
+              # Build snapshot for this variant
+              - type: DataTransform
+                id: build-variant-snapshot
+                props:
+                  outputKey: currentSnapshot
+                  mappings:
+                    - target: metricName
+                      value: "inventory_level"
+                    - target: value
+                      value: "${bb.currentVariant.inventory_quantity}"
+                    - target: dimensions.sku
+                      value: "${bb.currentVariant.sku}"
+                    - target: dimensions.productTitle
+                      value: "${bb.currentProduct.title}"
+                    - target: dimensions.variantTitle
+                      value: "${bb.currentVariant.title}"
+                    - target: dimensions.status
+                      value: "${bb.stockStatus}"
+                    - target: source
+                      value: "polling"
+                    - target: context_json.productId
+                      value: "${bb.currentProduct.id}"
+                    - target: context_json.variantId
+                      value: "${bb.currentVariant.id}"
+                    - target: context_json.lowStockThreshold
+                      value: "${bb.lowStockThreshold}"

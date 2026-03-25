@@ -1,96 +1,105 @@
 # Template: Shopify Carrier Delay Monitor
 #
-# Monitors unfulfilled orders for carrier pickup delays.
-# Detects orders that have been awaiting fulfillment beyond a threshold.
+# Monitors unfulfilled orders for carrier pickup delays for a known customer.
+# For store-wide order monitoring, use Mode 2 (shopify_graphql tool).
 #
 # Expected inputs (set on blackboard before calling):
+#   customerId: string       - Shopify customer ID to monitor
 #   thresholdHours: number   - Hours before an order is considered delayed (default: 12)
 #
 # Output:
-#   snapshotData: object     - Metric snapshot with delay stats per carrier
-#     { metricName, value, dimensions, context_json }
+#   snapshotData: object     - Metric snapshot with delay stats
+#   totalOrders: number      - Total unfulfilled orders
+#   totalDelayed: number     - Orders exceeding threshold
 
 type: Sequence
 id: carrier-delay-monitor
 children:
-  # Step 1: Fetch unfulfilled orders from Shopify
+  # Step 1: Fetch customer orders from Shopify
   - type: IntegrationAction
-    id: fetch-unfulfilled-orders
+    id: fetch-customer-orders
     props:
       provider: shopify
       action: get_customer_orders
       inputs:
-        status: unfulfilled
+        customerId: "${bb.customerId}"
       storeResult: true
-      resultKey: unfulfilledOrders
+      resultKey: customerOrders
 
-  # Step 2: Compute delay metrics grouped by carrier
-  - type: CodeExecution
-    id: compute-delay-metrics
+  # Step 2: Filter to unfulfilled orders only
+  - type: ArrayFilter
+    id: filter-unfulfilled
     props:
-      language: javascript
-      code: |
-        const orders = input.unfulfilledOrders?.result || [];
-        const now = Date.now();
-        const thresholdHours = input.thresholdHours || 12;
-        const thresholdMs = thresholdHours * 60 * 60 * 1000;
+      input: "${bb.customerOrders}"
+      outputKey: unfulfilledOrders
+      conditions:
+        - field: fulfillment_status
+          operator: in
+          value: [null, "unfulfilled"]
 
-        // Group orders by shipping carrier
-        const carrierStats = {};
+  # Step 3: Aggregate by carrier
+  - type: Aggregate
+    id: carrier-stats
+    props:
+      input: "${bb.unfulfilledOrders}"
+      outputKey: carrierStats
+      groupBy: shipping_carrier
+      operations:
+        - type: count
+          as: totalOrders
+        - type: avg
+          field: pending_hours
+          as: avgPendingHours
+        - type: max
+          field: pending_hours
+          as: maxPendingHours
 
-        for (const order of orders) {
-          const createdAt = new Date(order.created_at).getTime();
-          const pendingHours = (now - createdAt) / (1000 * 60 * 60);
-          const carrier = order.shipping_lines?.[0]?.source || 'unknown';
+  # Step 4: Count totals
+  - type: Aggregate
+    id: total-stats
+    props:
+      input: "${bb.unfulfilledOrders}"
+      outputKey: totalStats
+      operations:
+        - type: count
+          as: totalOrders
 
-          if (!carrierStats[carrier]) {
-            carrierStats[carrier] = {
-              totalOrders: 0,
-              delayedOrders: 0,
-              maxPendingHours: 0,
-              avgPendingHours: 0,
-              totalPendingHours: 0,
-            };
-          }
+  # Step 5: Count delayed orders (above threshold)
+  - type: ArrayFilter
+    id: filter-delayed
+    props:
+      input: "${bb.unfulfilledOrders}"
+      outputKey: delayedOrders
+      conditions:
+        - field: pending_hours
+          operator: gt
+          value: "${bb.thresholdHours}"
 
-          const stats = carrierStats[carrier];
-          stats.totalOrders++;
-          stats.totalPendingHours += pendingHours;
+  - type: Aggregate
+    id: delayed-stats
+    props:
+      input: "${bb.delayedOrders}"
+      outputKey: delayedStats
+      operations:
+        - type: count
+          as: totalDelayed
 
-          if (pendingHours > thresholdHours) {
-            stats.delayedOrders++;
-          }
-
-          if (pendingHours > stats.maxPendingHours) {
-            stats.maxPendingHours = pendingHours;
-          }
-        }
-
-        // Calculate averages and build snapshot rows
-        const snapshots = [];
-        for (const [carrier, stats] of Object.entries(carrierStats)) {
-          stats.avgPendingHours = stats.totalOrders > 0
-            ? stats.totalPendingHours / stats.totalOrders
-            : 0;
-
-          snapshots.push({
-            metricName: 'pending_pickup_hours',
-            value: Math.round(stats.avgPendingHours * 10) / 10,
-            dimensions: { carrier },
-            source: 'polling',
-            context_json: {
-              totalOrders: stats.totalOrders,
-              delayedOrders: stats.delayedOrders,
-              maxPendingHours: Math.round(stats.maxPendingHours * 10) / 10,
-              thresholdHours,
-            },
-          });
-        }
-
-        return {
-          snapshotData: snapshots,
-          totalOrders: orders.length,
-          totalDelayed: Object.values(carrierStats).reduce((sum, s) => sum + s.delayedOrders, 0),
-        };
-      storeResult: true
-      resultKey: snapshotData
+  # Step 6: Build metric snapshot
+  - type: DataTransform
+    id: build-snapshot
+    props:
+      outputKey: snapshotData
+      wrapInArray: true
+      mappings:
+        - target: metricName
+          value: "pending_pickup_hours"
+        - target: value
+          value: "${bb.carrierStats}"
+        - target: source
+          value: "polling"
+        - target: context_json.totalOrders
+          value: "${bb.totalStats.totalOrders}"
+        - target: context_json.totalDelayed
+          value: "${bb.delayedStats.totalDelayed}"
+        - target: context_json.thresholdHours
+          value: "${bb.thresholdHours}"
