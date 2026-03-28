@@ -127,7 +127,7 @@ describe("ForEach", () => {
       expect(result).toBe(NodeStatus.FAILURE);
     });
 
-    it("should return FAILURE if collection is not an array", async () => {
+    it("should throw ConfigurationError if collection is not an array", async () => {
       const forEach = new ForEach({
         id: "forEach1",
         collectionKey: "notArray",
@@ -137,8 +137,7 @@ describe("ForEach", () => {
       blackboard.set("notArray", "not an array");
       forEach.addChild(new SuccessNode({ id: "body" }));
 
-      const status = await forEach.tick(context);
-      expect(status).toBe(NodeStatus.FAILURE);
+      await expect(forEach.tick(context)).rejects.toThrow(ConfigurationError);
     });
   });
 
@@ -259,6 +258,24 @@ describe("ForEach", () => {
       const result = await forEach.tick(context);
       expect(result).toBe(NodeStatus.SUCCESS);
       expect(skus).toEqual(["TSH-S", "TSH-M"]);
+    });
+
+    it("should resolve bracket notation in collectionKey", async () => {
+      blackboard.set("data", { groups: [{ items: ["a", "b"] }] });
+
+      const forEach = new ForEach({
+        id: "bracket-test",
+        collectionKey: "data.groups[0].items",
+        itemKey: "currentItem",
+      });
+
+      const body = new SuccessNode({ id: "body-bracket" });
+      forEach.addChild(body);
+
+      const result = await forEach.tick(context);
+      expect(result).toBe(NodeStatus.SUCCESS);
+      // Last item should be set on blackboard
+      expect(blackboard.get("currentItem")).toBe("b");
     });
 
     it("should propagate ConfigurationError with no child", async () => {

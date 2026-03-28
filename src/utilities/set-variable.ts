@@ -6,6 +6,7 @@
  * Primary use case: controlling While loop conditions in agent loops.
  */
 
+import stringify from "safe-stable-stringify";
 import { ActionNode } from "../base-node.js";
 import {
   type TemporalContext,
@@ -83,7 +84,7 @@ export class SetVariable extends ActionNode {
 
       context.blackboard.set(resolvedKey, resolvedValue);
 
-      this.log(`Set ${resolvedKey} = ${JSON.stringify(resolvedValue)}`);
+      this.log(`Set ${resolvedKey} = ${stringify(resolvedValue)}`);
       return NodeStatus.SUCCESS;
     } catch (error) {
       this._lastError =

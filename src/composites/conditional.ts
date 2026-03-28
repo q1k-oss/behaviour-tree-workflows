@@ -49,11 +49,11 @@ export class Conditional extends CompositeNode {
     checkSignal(context.signal);
 
     if (!this.condition) {
-      throw new Error("Conditional requires at least a condition child");
+      throw new ConfigurationError("Conditional requires at least a condition child");
     }
 
     if (!this.thenBranch) {
-      throw new Error(
+      throw new ConfigurationError(
         "Conditional requires at least condition and then branch",
       );
     }
@@ -88,7 +88,7 @@ export class Conditional extends CompositeNode {
           return NodeStatus.RUNNING;
 
         default:
-          throw new Error(
+          throw new ConfigurationError(
             `Unexpected status from condition: ${conditionStatus}`,
           );
       }
@@ -98,7 +98,7 @@ export class Conditional extends CompositeNode {
 
     // Execute selected branch
     if (!this.selectedBranch) {
-      throw new Error("No branch selected for execution");
+      throw new ConfigurationError("No branch selected for execution");
     }
 
     const branchStatus = await this.selectedBranch.tick(context);

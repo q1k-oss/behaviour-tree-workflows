@@ -14,6 +14,8 @@
  * - String interpolation for partial matches: "Hello ${bb.name}!" returns string
  */
 
+import dlv from "dlv";
+import stringify from "safe-stable-stringify";
 import type { IScopedBlackboard } from "../types.js";
 
 /**
@@ -38,15 +40,39 @@ export interface ResolveOptions {
   envSource?: Record<string, string | undefined>;
 }
 
+/**
+ * Parse a dot/bracket path into segments.
+ * "products[0].variants[1].name" → ["products", "0", "variants", "1", "name"]
+ */
+export function parsePath(path: string): string[] {
+  const segments: string[] = [];
+  let current = "";
+  for (let i = 0; i < path.length; i++) {
+    const ch = path[i]!;
+    if (ch === "." || ch === "[") {
+      if (current) segments.push(current);
+      current = "";
+    } else if (ch === "]") {
+      if (current) segments.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  if (current) segments.push(current);
+  return segments;
+}
+
 // Pattern for variable references: ${namespace.key} or ${key}
 // Matches: ${input.orderId}, ${bb.user.name}, ${env.API_KEY}, ${param.testId}, ${simpleKey}
-const VARIABLE_PATTERN = /\$\{(input|bb|env|param)\.([a-zA-Z0-9_.]+)\}|\$\{([a-zA-Z0-9_.]+)\}/g;
+// Supports bracket notation: ${bb.products[0].name}
+const VARIABLE_PATTERN = /\$\{(input|bb|env|param)\.([a-zA-Z0-9_.\[\]]+)\}|\$\{([a-zA-Z0-9_.\[\]]+)\}/g;
 
 // Same pattern without global flag for testing (avoids lastIndex issues)
-const HAS_VARIABLE_PATTERN = /\$\{(input|bb|env|param)\.([a-zA-Z0-9_.]+)\}|\$\{([a-zA-Z0-9_.]+)\}/;
+const HAS_VARIABLE_PATTERN = /\$\{(input|bb|env|param)\.([a-zA-Z0-9_.\[\]]+)\}|\$\{([a-zA-Z0-9_.\[\]]+)\}/;
 
 // Pattern for checking if entire string is a single variable reference
-const FULL_MATCH_PATTERN = /^\$\{(input|bb|env|param)\.([a-zA-Z0-9_.]+)\}$|^\$\{([a-zA-Z0-9_.]+)\}$/;
+const FULL_MATCH_PATTERN = /^\$\{(input|bb|env|param)\.([a-zA-Z0-9_.\[\]]+)\}$|^\$\{([a-zA-Z0-9_.\[\]]+)\}$/;
 
 /**
  * Resolve a string containing variable references
@@ -118,11 +144,7 @@ export function resolveString(
     }
 
     if (typeof value === "object") {
-      try {
-        return JSON.stringify(value);
-      } catch {
-        return String(value);
-      }
+      return stringify(value) ?? String(value);
     }
 
     return String(value);
@@ -191,19 +213,13 @@ function resolveVariable(
     case "param":
       // Test data uses Map, check for nested access
       if (ctx.testData) {
-        const parts = key.split(".");
+        const parts = parsePath(key);
         const firstPart = parts[0];
         if (firstPart) {
-          let value = ctx.testData.get(firstPart);
-          for (let i = 1; i < parts.length && value !== undefined; i++) {
-            const part = parts[i];
-            if (part && typeof value === "object" && value !== null) {
-              value = (value as Record<string, unknown>)[part];
-            } else {
-              return undefined;
-            }
-          }
-          return value;
+          const value = ctx.testData.get(firstPart);
+          if (parts.length === 1) return value;
+          if (value === undefined || value === null || typeof value !== "object") return undefined;
+          return dlv(value as object, parts.slice(1));
         }
       }
       return undefined;
@@ -222,30 +238,10 @@ function resolveVariable(
  * @returns Value at path or undefined
  */
 function getNestedValue(obj: unknown, path: string): unknown {
-  if (obj === undefined || obj === null) {
+  if (obj === undefined || obj === null || typeof obj !== "object") {
     return undefined;
   }
-
-  if (typeof obj !== "object") {
-    return undefined;
-  }
-
-  const parts = path.split(".");
-  let value: unknown = obj;
-
-  for (const part of parts) {
-    if (value === undefined || value === null) {
-      return undefined;
-    }
-
-    if (typeof value !== "object") {
-      return undefined;
-    }
-
-    value = (value as Record<string, unknown>)[part];
-  }
-
-  return value;
+  return dlv(obj as object, parsePath(path));
 }
 
 /**
@@ -260,7 +256,7 @@ function getNestedBlackboardValue(
   blackboard: IScopedBlackboard,
   path: string
 ): unknown {
-  const parts = path.split(".");
+  const parts = parsePath(path);
   const firstPart = parts[0];
 
   if (!firstPart) {
@@ -268,19 +264,18 @@ function getNestedBlackboardValue(
   }
 
   // First part is the blackboard key
-  let value: unknown = blackboard.get(firstPart);
+  const value = blackboard.get(firstPart);
 
-  // Navigate through nested properties
-  for (let i = 1; i < parts.length && value !== undefined; i++) {
-    const part = parts[i];
-    if (part && typeof value === "object" && value !== null) {
-      value = (value as Record<string, unknown>)[part];
-    } else {
-      return undefined;
-    }
+  // If only one segment, return directly
+  if (parts.length === 1) {
+    return value;
   }
 
-  return value;
+  // Navigate remaining path with dlv
+  if (value === undefined || value === null || typeof value !== "object") {
+    return undefined;
+  }
+  return dlv(value as object, parts.slice(1));
 }
 
 /**
@@ -303,7 +298,7 @@ export function extractVariables(
   str: string
 ): Array<{ namespace: string; key: string }> {
   const variables: Array<{ namespace: string; key: string }> = [];
-  const pattern = /\$\{(input|bb|env|param)\.([a-zA-Z0-9_.]+)\}|\$\{([a-zA-Z0-9_.]+)\}/g;
+  const pattern = /\$\{(input|bb|env|param)\.([a-zA-Z0-9_.\[\]]+)\}|\$\{([a-zA-Z0-9_.\[\]]+)\}/g;
 
   let match;
   while ((match = pattern.exec(str)) !== null) {

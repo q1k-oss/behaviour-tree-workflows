@@ -23,6 +23,7 @@
  */
 
 import { ActionNode } from "../base-node.js";
+import { ConfigurationError } from "../errors.js";
 import {
   type TemporalContext,
   type NodeConfiguration,
@@ -155,7 +156,7 @@ export class ArrayFilter extends ActionNode {
         : this.input;
 
       if (!Array.isArray(inputResolved)) {
-        throw new Error(
+        throw new ConfigurationError(
           `Input is not an array: got ${inputResolved === null ? "null" : typeof inputResolved}`
         );
       }
@@ -183,6 +184,7 @@ export class ArrayFilter extends ActionNode {
       this.log(`Filtered ${inputResolved.length} → ${result.length} items`);
       return NodeStatus.SUCCESS;
     } catch (error) {
+      if (error instanceof ConfigurationError) throw error;
       this._lastError = error instanceof Error ? error.message : String(error);
       this.log(`ArrayFilter failed: ${this._lastError}`);
       return NodeStatus.FAILURE;

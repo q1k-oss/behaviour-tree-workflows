@@ -24,6 +24,7 @@
  * - Log with level: <LogMessage message="Error occurred" level="error" />
  */
 
+import stringify from "safe-stable-stringify";
 import { ActionNode } from "../base-node.js";
 import { NodeEventType } from "../events.js";
 import {
@@ -122,11 +123,7 @@ export class LogMessage extends ActionNode {
     }
 
     if (typeof resolved === "object") {
-      try {
-        return JSON.stringify(resolved);
-      } catch {
-        return String(resolved);
-      }
+      return stringify(resolved) ?? String(resolved);
     }
 
     return String(resolved);

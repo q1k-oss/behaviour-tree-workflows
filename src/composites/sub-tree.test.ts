@@ -5,6 +5,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { BehaviorTree } from "../behavior-tree.js";
 import { ScopedBlackboard } from "../blackboard.js";
+import { ConfigurationError } from "../errors.js";
 import { Registry } from "../registry.js";
 import { FailureNode, RunningNode, SuccessNode } from "../test-nodes.js";
 import type { TreeNode } from "../types.js";
@@ -102,15 +103,14 @@ describe("SubTree", () => {
       expect(result).toBe(NodeStatus.RUNNING);
     });
 
-    it("should throw error when tree ID is not found", async () => {
+    it("should throw ConfigurationError when tree ID is not found", async () => {
       const subTree = new SubTree({
         id: "sg1",
         name: "Invalid Group",
         treeId: "nonexistent-tree",
       });
 
-      const status = await subTree.tick(context);
-      expect(status).toBe(NodeStatus.FAILURE);
+      await expect(subTree.tick(context)).rejects.toThrow(ConfigurationError);
     });
 
     it("should include available trees in error message", async () => {
@@ -124,8 +124,7 @@ describe("SubTree", () => {
         treeId: "nonexistent-tree",
       });
 
-      const status = await subTree.tick(context);
-      expect(status).toBe(NodeStatus.FAILURE);
+      await expect(subTree.tick(context)).rejects.toThrow(ConfigurationError);
     });
   });
 

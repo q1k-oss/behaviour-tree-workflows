@@ -22,6 +22,7 @@
  * ```
  */
 
+import stringify from "safe-stable-stringify";
 import { ActionNode } from "../base-node.js";
 import {
   type TemporalContext,
@@ -110,7 +111,7 @@ export class ThresholdCheck extends ActionNode {
         : parseFloat(String(resolved));
 
       if (isNaN(numValue)) {
-        throw new Error(`Value is not numeric: ${JSON.stringify(resolved)}`);
+        throw new Error(`Value is not numeric: ${stringify(resolved)}`);
       }
 
       // Evaluate thresholds top-to-bottom

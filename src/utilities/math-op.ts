@@ -18,6 +18,7 @@
  * ```
  */
 
+import stringify from "safe-stable-stringify";
 import { ActionNode } from "../base-node.js";
 import {
   type TemporalContext,
@@ -176,13 +177,13 @@ function evaluate(tokens: Token[]): number {
       pos++; // consume ')'
       return val;
     }
-    throw new Error(`Unexpected token: ${JSON.stringify(tok)}`);
+    throw new Error(`Unexpected token: ${stringify(tok)}`);
   }
 
   const result = parseExpr();
   const remaining = current();
   if (remaining) {
-    throw new Error(`Unexpected token after expression: ${JSON.stringify(remaining)}`);
+    throw new Error(`Unexpected token after expression: ${stringify(remaining)}`);
   }
   return result;
 }

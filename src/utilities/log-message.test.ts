@@ -125,7 +125,7 @@ describe("LogMessage", () => {
     expect(result).toBe(NodeStatus.SUCCESS);
     expect(consoleLogSpy).toHaveBeenCalledWith(
       expect.stringContaining(
-        '[LogMessage:log-5] User: {"name":"John","age":30}',
+        '[LogMessage:log-5] User: {"age":30,"name":"John"}',
       ),
     );
   });

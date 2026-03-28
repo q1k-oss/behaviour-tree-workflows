@@ -5,6 +5,7 @@
  * Simple mutable API with native deep cloning for snapshots
  */
 
+import stringify from "safe-stable-stringify";
 import type { IScopedBlackboard } from "./types.js";
 
 /**
@@ -182,7 +183,7 @@ export class ScopedBlackboard implements IScopedBlackboard {
     console.log(`${prefix}Scope: ${this.scopeName}`);
 
     for (const [key, value] of Object.entries(this.data)) {
-      console.log(`${prefix}  ${key}: ${JSON.stringify(value)}`);
+      console.log(`${prefix}  ${key}: ${stringify(value)}`);
     }
 
     for (const [_name, childScope] of this.childScopes) {
