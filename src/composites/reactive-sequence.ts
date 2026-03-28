@@ -59,7 +59,7 @@ export class ReactiveSequence extends Sequence {
           return NodeStatus.RUNNING;
 
         default:
-          throw new Error(`Unexpected status from child: ${childStatus}`);
+          throw new ConfigurationError(`Unexpected status from child: ${childStatus}`);
       }
     }
 

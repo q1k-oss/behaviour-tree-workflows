@@ -2,6 +2,8 @@
  * ForEach node - Iterate over collection
  */
 
+import dlv from "dlv";
+import stringify from "safe-stable-stringify";
 import { CompositeNode } from "../base-node.js";
 import { ConfigurationError } from "../errors.js";
 import {
@@ -10,28 +12,22 @@ import {
   NodeStatus,
 } from "../types.js";
 import { checkSignal } from "../utils/signal-check.js";
+import { parsePath } from "../utilities/variable-resolver.js";
 
 /**
- * Resolve a dot-path from the blackboard.
+ * Resolve a dot/bracket path from the blackboard.
  * "currentProduct.variants" → blackboard.get("currentProduct").variants
+ * "data.items[0].children" → blackboard.get("data").items[0].children
  */
 function resolveFromBlackboard(blackboard: { get(key: string): unknown }, path: string): unknown {
-  const parts = path.split(".");
+  const parts = parsePath(path);
   const firstPart = parts[0];
   if (!firstPart) return undefined;
 
-  let value: unknown = blackboard.get(firstPart);
-
-  for (let i = 1; i < parts.length && value != null; i++) {
-    const part = parts[i];
-    if (part && typeof value === "object") {
-      value = (value as Record<string, unknown>)[part];
-    } else {
-      return undefined;
-    }
-  }
-
-  return value;
+  const value = blackboard.get(firstPart);
+  if (parts.length === 1) return value;
+  if (value === undefined || value === null || typeof value !== "object") return undefined;
+  return dlv(value as object, parts.slice(1));
 }
 
 export interface ForEachConfiguration extends NodeConfiguration {
@@ -73,7 +69,7 @@ export class ForEach extends CompositeNode {
     }
 
     // Support dot-path: "currentProduct.variants" → blackboard.get("currentProduct").variants
-    const collection = this.collectionKey.includes(".")
+    const collection = (this.collectionKey.includes(".") || this.collectionKey.includes("["))
       ? resolveFromBlackboard(context.blackboard, this.collectionKey)
       : context.blackboard.get(this.collectionKey);
 
@@ -84,7 +80,7 @@ export class ForEach extends CompositeNode {
     }
 
     if (!Array.isArray(collection)) {
-      throw new Error(`Collection '${this.collectionKey}' is not an array`);
+      throw new ConfigurationError(`Collection '${this.collectionKey}' is not an array`);
     }
 
     // Empty collection is success
@@ -112,7 +108,7 @@ export class ForEach extends CompositeNode {
       }
 
       this.log(
-        `Processing item ${this.currentIndex}: ${JSON.stringify(item)}`,
+        `Processing item ${this.currentIndex}: ${stringify(item)}`,
       );
       const bodyStatus = await body.tick(context);
 
@@ -135,7 +131,7 @@ export class ForEach extends CompositeNode {
           return NodeStatus.RUNNING; // Will resume from this index next tick
 
         default:
-          throw new Error(`Unexpected status from body: ${bodyStatus}`);
+          throw new ConfigurationError(`Unexpected status from body: ${bodyStatus}`);
       }
     }
 

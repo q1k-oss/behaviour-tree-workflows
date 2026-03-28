@@ -9,6 +9,7 @@ import {
   resolveValue,
   hasVariables,
   extractVariables,
+  parsePath,
   type VariableContext,
 } from "./variable-resolver.js";
 
@@ -411,6 +412,97 @@ describe("Variable Resolver", () => {
       expect(resolveString("${bb.spreadsheetId}", ctx)).toBe("sheet-123");
       // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing variable syntax
       expect(resolveString("${bb.values}", ctx)).toEqual(["a", "b", "c"]);
+    });
+  });
+
+  describe("circular reference handling (B3)", () => {
+    it("should handle circular object in interpolation without [object Object]", () => {
+      const ctx = createContext();
+      const circular: Record<string, unknown> = { name: "test" };
+      circular.self = circular;
+      ctx.blackboard.set("circular", circular);
+
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing variable syntax
+      const result = resolveString("data: ${bb.circular}", ctx);
+      expect(result).toContain("[Circular]");
+      expect(result).not.toContain("[object Object]");
+    });
+
+    it("should preserve circular object type on full match", () => {
+      const ctx = createContext();
+      const circular: Record<string, unknown> = { name: "test" };
+      circular.self = circular;
+      ctx.blackboard.set("circular", circular);
+
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing variable syntax
+      const result = resolveString("${bb.circular}", ctx);
+      // Full match returns original object (type preservation, no stringify)
+      expect(result).toBe(circular);
+    });
+  });
+
+  describe("bracket notation (B2)", () => {
+    it("should resolve array index with bracket notation", () => {
+      const ctx = createContext();
+      ctx.blackboard.set("products", [{ name: "Widget" }, { name: "Gadget" }]);
+
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing variable syntax
+      const result = resolveString("${bb.products[0].name}", ctx);
+      expect(result).toBe("Widget");
+    });
+
+    it("should resolve simple array index", () => {
+      const ctx = createContext();
+      ctx.blackboard.set("arr", [10, 20, 30]);
+
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing variable syntax
+      const result = resolveString("${bb.arr[1]}", ctx);
+      expect(result).toBe(20);
+    });
+
+    it("should resolve deeply nested bracket notation", () => {
+      const ctx = createContext();
+      ctx.blackboard.set("data", { items: [{ children: [{ id: "deep" }] }] });
+
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing variable syntax
+      const result = resolveString("${bb.data.items[0].children[0].id}", ctx);
+      expect(result).toBe("deep");
+    });
+
+    it("should return undefined for out-of-bounds index", () => {
+      const ctx = createContext();
+      ctx.blackboard.set("arr", [1, 2]);
+
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing variable syntax
+      const result = resolveString("${bb.arr[99]}", ctx);
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing variable syntax
+      expect(result).toBe("${bb.arr[99]}"); // preserveUndefined default
+    });
+
+    it("should work with input namespace", () => {
+      const ctx = createContext({ input: { items: ["a", "b", "c"] } });
+
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing variable syntax
+      const result = resolveString("${input.items[2]}", ctx);
+      expect(result).toBe("c");
+    });
+  });
+
+  describe("parsePath", () => {
+    it("should parse simple dot path", () => {
+      expect(parsePath("a.b.c")).toEqual(["a", "b", "c"]);
+    });
+
+    it("should parse bracket notation", () => {
+      expect(parsePath("products[0].name")).toEqual(["products", "0", "name"]);
+    });
+
+    it("should parse mixed deep paths", () => {
+      expect(parsePath("a[0].b[1].c")).toEqual(["a", "0", "b", "1", "c"]);
+    });
+
+    it("should handle single key", () => {
+      expect(parsePath("key")).toEqual(["key"]);
     });
   });
 });

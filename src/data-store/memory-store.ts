@@ -10,6 +10,7 @@
  * - Thread-safe for single Node.js process
  */
 
+import stringify from "safe-stable-stringify";
 import type { DataStore, DataRef, PutOptions } from "./types.js";
 
 interface StoredEntry {
@@ -39,7 +40,7 @@ export class MemoryDataStore implements DataStore {
   }
 
   async put(key: string, data: unknown, options?: PutOptions): Promise<DataRef> {
-    const serialized = JSON.stringify(data);
+    const serialized = stringify(data) ?? "{}";
     const sizeBytes = Buffer.byteLength(serialized, "utf8");
 
     const entry: StoredEntry = {

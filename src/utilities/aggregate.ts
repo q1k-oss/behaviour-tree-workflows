@@ -21,7 +21,9 @@
  * ```
  */
 
+import stringify from "safe-stable-stringify";
 import { ActionNode } from "../base-node.js";
+import { ConfigurationError } from "../errors.js";
 import {
   type TemporalContext,
   type NodeConfiguration,
@@ -139,7 +141,7 @@ export class Aggregate extends ActionNode {
         : this.input;
 
       if (!Array.isArray(inputResolved)) {
-        throw new Error(
+        throw new ConfigurationError(
           `Input is not an array: got ${inputResolved === null ? "null" : typeof inputResolved}`
         );
       }
@@ -148,7 +150,7 @@ export class Aggregate extends ActionNode {
         // Flat aggregation
         const result = computeAggregations(inputResolved, this.operations);
         context.blackboard.set(this.outputKey, result);
-        this.log(`Aggregated ${inputResolved.length} items → ${JSON.stringify(result)}`);
+        this.log(`Aggregated ${inputResolved.length} items → ${stringify(result)}`);
       } else {
         // Group by field, then aggregate each group
         const groups: Record<string, unknown[]> = {};
@@ -174,6 +176,7 @@ export class Aggregate extends ActionNode {
 
       return NodeStatus.SUCCESS;
     } catch (error) {
+      if (error instanceof ConfigurationError) throw error;
       this._lastError = error instanceof Error ? error.message : String(error);
       this.log(`Aggregate failed: ${this._lastError}`);
       return NodeStatus.FAILURE;

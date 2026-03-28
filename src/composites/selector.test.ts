@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { ActionNode } from "../base-node.js";
 import { ScopedBlackboard } from "../blackboard.js";
 import { ConfigurationError } from "../errors.js";
-import { MockAction } from "../test-nodes.js";
+import { MockAction, SuccessNode } from "../test-nodes.js";
 import { type TemporalContext, NodeStatus } from "../types.js";
 import { checkSignal } from "../utils/signal-check.js";
+import { ForEach } from "./for-each.js";
 import { Fallback, Selector } from "./selector.js";
 
 describe("Selector", () => {
@@ -351,6 +352,22 @@ describe("Selector", () => {
         expect(validChild.status()).toBe(NodeStatus.IDLE);
       },
     );
+
+    it("ConfigurationError from ForEach child should propagate through Selector (B1)", async () => {
+      const sel = new Selector({ id: "sel-b1" });
+      const forEach = new ForEach({
+        id: "fe-b1",
+        collectionKey: "nonArrayKey",
+        itemKey: "item",
+      });
+      const body = new SuccessNode({ id: "body-b1" });
+      forEach.addChild(body);
+      sel.addChild(forEach);
+
+      context.blackboard.set("nonArrayKey", "not-an-array");
+
+      await expect(sel.tick(context)).rejects.toThrow(ConfigurationError);
+    });
   });
 });
 

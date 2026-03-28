@@ -121,7 +121,7 @@ export class While extends CompositeNode {
           return NodeStatus.RUNNING;
 
         default:
-          throw new Error(`Unexpected status from body: ${bodyStatus}`);
+          throw new ConfigurationError(`Unexpected status from body: ${bodyStatus}`);
       }
     }
 

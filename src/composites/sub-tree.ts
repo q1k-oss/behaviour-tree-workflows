@@ -8,6 +8,7 @@
  */
 
 import { ActionNode } from "../base-node.js";
+import { ConfigurationError } from "../errors.js";
 import type { TreeNode } from "../types.js";
 import {
   type TemporalContext,
@@ -79,7 +80,7 @@ export class SubTree extends ActionNode {
     // 1. Clone tree from registry (lazy, only on first tick)
     if (!this.clonedTree) {
       if (!context.treeRegistry.hasTree(this.treeId)) {
-        throw new Error(
+        throw new ConfigurationError(
           `SubTree tree '${this.treeId}' not found in registry. ` +
             `Available trees: ${context.treeRegistry.getAllTreeIds().join(", ") || "none"}`,
         );

@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { ScopedBlackboard } from "../blackboard.js";
+import { ConfigurationError } from "../errors.js";
 import { FailureNode, RunningNode, SuccessNode } from "../test-nodes.js";
 import { type TemporalContext, NodeStatus } from "../types.js";
 import { Conditional } from "./conditional.js";
@@ -149,19 +150,17 @@ describe("Conditional", () => {
       }).toThrow("Conditional can have maximum 3 children");
     });
 
-    it("should return FAILURE without condition", async () => {
+    it("should throw ConfigurationError without condition", async () => {
       const conditional = new Conditional({ id: "cond1" });
 
-      const status = await conditional.tick(context);
-      expect(status).toBe(NodeStatus.FAILURE);
+      await expect(conditional.tick(context)).rejects.toThrow(ConfigurationError);
     });
 
-    it("should return FAILURE without then branch", async () => {
+    it("should throw ConfigurationError without then branch", async () => {
       const conditional = new Conditional({ id: "cond1" });
       conditional.addChild(new SuccessNode({ id: "condition" }));
 
-      const status = await conditional.tick(context);
-      expect(status).toBe(NodeStatus.FAILURE);
+      await expect(conditional.tick(context)).rejects.toThrow(ConfigurationError);
     });
   });
 

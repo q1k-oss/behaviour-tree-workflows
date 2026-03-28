@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ArrayFilter } from "./array-filter.js";
 import { ScopedBlackboard } from "../blackboard.js";
+import { ConfigurationError } from "../errors.js";
 import { NodeStatus, type TemporalContext } from "../types.js";
 
 describe("ArrayFilter Node", () => {
@@ -184,15 +185,14 @@ describe("ArrayFilter Node", () => {
     expect(blackboard.get("result")).toEqual([]);
   });
 
-  it("returns FAILURE when input is missing", async () => {
+  it("throws ConfigurationError when input is missing", async () => {
     const node = new ArrayFilter({
       id: "f12",
       input: "${bb.missing}",
       outputKey: "result",
       conditions: [{ field: "x", operator: "eq", value: 1 }],
     });
-    const status = await node.tick(context);
-    expect(status).toBe(NodeStatus.FAILURE);
+    await expect(node.tick(context)).rejects.toThrow(ConfigurationError);
   });
 
   it("resolves variable in condition value", async () => {

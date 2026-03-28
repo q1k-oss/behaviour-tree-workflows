@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Aggregate } from "./aggregate.js";
 import { ScopedBlackboard } from "../blackboard.js";
+import { ConfigurationError } from "../errors.js";
 import { NodeStatus, type TemporalContext } from "../types.js";
 
 describe("Aggregate Node", () => {
@@ -170,15 +171,14 @@ describe("Aggregate Node", () => {
     expect((blackboard.get("result") as any).total).toBe(30);
   });
 
-  it("returns FAILURE for missing input", async () => {
+  it("throws ConfigurationError for missing input", async () => {
     const node = new Aggregate({
       id: "agg10",
       input: "${bb.missing}",
       outputKey: "result",
       operations: [{ type: "count" }],
     });
-    const status = await node.tick(context);
-    expect(status).toBe(NodeStatus.FAILURE);
+    await expect(node.tick(context)).rejects.toThrow(ConfigurationError);
   });
 
   it("handles nested field in aggregation", async () => {

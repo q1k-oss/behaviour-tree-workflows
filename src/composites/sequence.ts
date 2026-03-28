@@ -4,6 +4,7 @@
  */
 
 import { CompositeNode } from "../base-node.js";
+import { ConfigurationError } from "../errors.js";
 import { type TemporalContext, NodeStatus } from "../types.js";
 import { checkSignal } from "../utils/signal-check.js";
 
@@ -24,7 +25,7 @@ export class Sequence extends CompositeNode {
 
       const child = this._children[this.currentChildIndex];
       if (!child) {
-        throw new Error(
+        throw new ConfigurationError(
           `Child at index ${this.currentChildIndex} is undefined`,
         );
       }
@@ -50,7 +51,7 @@ export class Sequence extends CompositeNode {
           return NodeStatus.RUNNING;
 
         default:
-          throw new Error(`Unexpected status from child: ${childStatus}`);
+          throw new ConfigurationError(`Unexpected status from child: ${childStatus}`);
       }
     }
 
