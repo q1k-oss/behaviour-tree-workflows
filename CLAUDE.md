@@ -189,3 +189,17 @@ All node types automatically emit ERROR events with:
 - Test edge cases (empty children, null values)
 - Use helper nodes from `src/test-nodes.ts`
 - Tests run with `CI=true` to prevent watch mode in CI
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

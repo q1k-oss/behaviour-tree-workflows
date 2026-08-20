@@ -1,5 +1,8 @@
 # @q1k-oss/behaviour-tree-workflows
 
+> **Integrations status (2026-08-20):** the Activepieces `IntegrationAction` path is **dormant** — deferred, not retired. Only `google-sheets` and `shopify` pieces are installed and mapped. See [Happect/q1k-controlplane#218](https://github.com/Happect/q1k-controlplane/issues/218) for the findings (stale framework pin, private `_actions` coupling, licence audit outstanding) and the revive trigger.
+
+
 Core behavior tree implementation for TypeScript, designed for AI-native workflows.
 
 ## Features
