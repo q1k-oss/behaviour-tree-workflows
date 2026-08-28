@@ -14,48 +14,27 @@ import type { PieceActivityRequest, PieceAuth } from "../types.js";
 export type { PieceAuth, PieceActivityRequest as PieceActionRequest } from "../types.js";
 
 /**
- * Mapping from provider names to Active Pieces package names
- * Add entries as needed when integrating new providers
+ * Mapping from provider names to Active Pieces package names.
+ *
+ * DORMANT (2026-08-20): the Activepieces path is deferred, not retired —
+ * see Happect/q1k-controlplane#218 for the full findings. In short:
+ * upstream Activepieces is healthy (weekly releases), but this wrapper is
+ * pinned to pieces-framework 0.23.0 (the only release in that line,
+ * 2025-12-29; latest is 0.32.x), reaches into the private `_actions`
+ * field, and a licence audit (open-core split, premium pieces, missing
+ * licence metadata on npm) is outstanding. Revive trigger: the ERP/
+ * finance tier (NetSuite, QuickBooks, Stripe) becoming a real
+ * requirement — at that point rehabilitate this wrapper against the
+ * current public piece API before adding entries.
+ *
+ * This table lists ONLY pieces that are actually installed as
+ * dependencies. The previous 23-entry version advertised 21 providers
+ * whose packages were never installed and failed at dynamic import.
  */
 const PROVIDER_TO_PIECE: Record<string, string> = {
-  // Google services
   "google": "google-sheets",
   "google-sheets": "google-sheets",
-  "google-drive": "google-drive",
-  "google-calendar": "google-calendar",
-  "gmail": "gmail",
-
-  // Communication
-  "slack": "slack",
-  "discord": "discord",
-  "telegram": "telegram-bot",
-  "twilio": "twilio",
-
-  // AI/ML
-  "openai": "openai",
-  "anthropic": "anthropic",
-
-  // CRM & Sales
-  "hubspot": "hubspot",
-  "salesforce": "salesforce",
-
-  // Productivity
-  "notion": "notion",
-  "airtable": "airtable",
-  "asana": "asana",
-  "trello": "trello",
-
-  // Development
-  "github": "github",
-  "gitlab": "gitlab",
-
-  // E-commerce
   "shopify": "shopify",
-  "stripe": "stripe",
-
-  // Other
-  "http": "http",
-  "webhook": "http",
 };
 
 /**
@@ -81,12 +60,6 @@ function getPiecePackageName(provider: string): string {
  */
 const PIECE_EXPORT_NAMES: Record<string, string> = {
   "@activepieces/piece-google-sheets": "googleSheets",
-  "@activepieces/piece-slack": "slack",
-  "@activepieces/piece-openai": "openai",
-  "@activepieces/piece-discord": "discord",
-  "@activepieces/piece-notion": "notion",
-  "@activepieces/piece-github": "github",
-  "@activepieces/piece-http": "http",
   "@activepieces/piece-shopify": "shopify",
 };
 
