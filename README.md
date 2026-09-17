@@ -25,7 +25,7 @@
   <a href="./docs/yaml-specification.md"><strong>YAML spec</strong></a> ·
   <a href="https://www.npmjs.com/package/@q1k-oss/behaviour-tree-workflows"><strong>npm</strong></a> ·
   <a href="https://github.com/q1k-oss/behaviour-tree-workflows"><strong>GitHub</strong></a> ·
-  <a href="https://q1k.ai/open-source"><strong>q1k-oss</strong></a>
+  <a href="https://q1k.ai/oss"><strong>q1k-oss</strong></a>
 </p>
 
 ---
@@ -517,7 +517,7 @@ descriptive, or for control-flow nodes, where the child is what failed.
 ## Related projects
 
 This library is part of the q1k-oss family — see
-[q1k.ai/open-source](https://q1k.ai/open-source).
+[q1k.ai/oss](https://q1k.ai/oss).
 
 | Package | What it does |
 | --- | --- |

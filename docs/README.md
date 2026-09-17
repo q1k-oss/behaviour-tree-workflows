@@ -75,5 +75,5 @@ supplied on the tick context.
 
 ## Related
 
-- [q1k-oss](https://q1k.ai/open-source) - The rest of the q1k open-source family
+- [q1k-oss](https://q1k.ai/oss) - The rest of the q1k open-source family
 - [Temporal.io](https://temporal.io) - Durable execution runtime
