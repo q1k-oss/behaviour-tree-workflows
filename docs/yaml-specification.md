@@ -1,6 +1,8 @@
 # YAML Workflow Specification
 
-This document provides a comprehensive reference for defining behavior tree workflows using YAML in behaviour-tree.
+This document covers the YAML syntax: structure, validation, and how each family of nodes
+is composed. For the props of every individual node, see the
+[Node Reference](./NODE_REFERENCE.md), which documents all 53 built-in types.
 
 ## Table of Contents
 
@@ -773,9 +775,9 @@ import {
   loadTreeFromFile
 } from '@q1k-oss/behaviour-tree-workflows';
 
-// Setup registry with all 32 built-in nodes
+// Setup registry with all 53 built-in nodes
 const registry = new Registry();
-registerStandardNodes(registry);  // One line instead of 32!
+registerStandardNodes(registry);  // One line instead of 53!
 
 // Register your custom nodes
 registry.register('ProcessPayment', ProcessPayment, { category: 'action' });
@@ -984,7 +986,7 @@ npx tsx client.ts
 
 ## Further Reading
 
-- [Core Concepts](./workflow-engine/01-core-concepts.md) - Behavior tree fundamentals
-- [Node Reference](./workflow-engine/02-node-reference.md) - Complete node documentation
-- [Schema Documentation](../src/schemas/README.md) - Zod schema reference
-- [Registry Guide](./workflow-engine/03-registry.md) - Node registration and tree creation
+- [Node Reference](./NODE_REFERENCE.md) - Props and examples for all 53 built-in nodes
+- [Custom Nodes](./custom-nodes-architecture.md) - Writing and registering your own nodes
+- [Observability](./observability.md) - Events, execution tracking and sinks
+- [Examples](../examples/yaml-workflows/) - Runnable YAML workflows

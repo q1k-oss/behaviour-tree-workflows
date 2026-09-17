@@ -147,7 +147,7 @@ When using behaviour-tree with Temporal, the observability module integrates via
 2. **Workflow Sinks**: Export events without affecting determinism
 3. **Workflow Results**: Include errors and timeline in completion
 
-See the q1k-controlplane application for a complete implementation example.
+See [`examples/temporal/`](../examples/temporal/) for a working worker and client.
 
 ## Exports
 

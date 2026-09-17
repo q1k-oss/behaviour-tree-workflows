@@ -1,5 +1,14 @@
 # behaviour-tree Architecture Summary
 
+> **Design note, not current reference.** This document records a plan and the reasoning
+> behind it; parts of it were implemented, parts were not. For what the library actually
+> ships today see the [Node Reference](./NODE_REFERENCE.md) and the
+> [README](../README.md).
+>
+> Specifically: the `Script` node described here was removed in favour of
+> `CodeExecution`, and the proposed `JavaScriptNode` was never added —
+> `CodeExecution` covers both JavaScript and Python.
+
 ## Overview
 
 behaviour-tree is a behavior tree library for TypeScript, designed for AI-native workflows with native Temporal integration.

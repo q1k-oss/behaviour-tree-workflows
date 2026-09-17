@@ -1,5 +1,10 @@
 # AI-Native Nodes Implementation Plan
 
+> **Design note, not current reference.** This document records a plan and the reasoning
+> behind it; parts of it were implemented, parts were not. For what the library actually
+> ships today see the [Node Reference](./NODE_REFERENCE.md) and the
+> [README](../README.md).
+
 This document outlines the implementation plan for adding AI-native nodes to @q1k-oss/behaviour-tree-workflows.
 
 ## Overview

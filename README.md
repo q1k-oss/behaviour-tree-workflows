@@ -72,7 +72,8 @@ what keeps the tree itself deterministic.
   sandboxed code execution, human tasks.
 - **Observable** — a node lifecycle event emitter, an execution tracker and pluggable
   observability sinks.
-- **Typed** — TypeScript throughout, ESM and CJS builds, tests beside every module.
+- **Typed and tested** — TypeScript throughout, ESM and CJS builds, 971 tests across
+  65 files.
 
 ## Install
 
@@ -457,8 +458,9 @@ src/
 └── ai-sdk/             # Provider adapters (separate entrypoint)
 ```
 
-Tests sit beside the modules they cover as `*.test.ts`, and run under
-[vitest](https://vitest.dev/). Longer-form docs live in [`docs/`](./docs/).
+Tests sit beside the modules they cover as `*.test.ts` and run under
+[vitest](https://vitest.dev/) — 971 of them across 65 files. Longer-form docs live in
+[`docs/`](./docs/).
 
 ## Contributing
 

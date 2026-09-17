@@ -1,5 +1,13 @@
 # Custom Nodes Plugin System Architecture
 
+> **Design note, not current reference.** This document records a plan and the reasoning
+> behind it; parts of it were implemented, parts were not. For what the library actually
+> ships today see the [Node Reference](./NODE_REFERENCE.md) and the
+> [README](../README.md).
+>
+> The "32 standard nodes" figure below dates from when this was written;
+> `registerStandardNodes()` now provides 53.
+
 **Goal**: Allow tenants to create custom workflow nodes without writing code initially, then progressively enable full TypeScript node development.
 
 ---
